@@ -576,26 +576,57 @@ function finishGame(wi) {
 function showEnd() {
   if (!G || !G.over || !G.result || shownEnd === G.gid) return;
   shownEnd = G.gid;
-  const ps = G.players, { wi, to, bonus, others, rem } = G.result, me = ps[ME], isMe = p => p === me;
+  const ps = G.players, { wi, to, bonus, others, rem, ff } = G.result, me = ps[ME], isMe = p => p === me;
   let title, detail;
-  if (wi >= 0) {
+  if (ff != null) {
+    title = isMe(ps[ff]) ? 'Vous avez abandonné la partie' : `${ps[ff].name} a abandonné la partie`;
+    detail = 'Pas de points de fin de partie : les scores restent ceux du moment.';
+  } else if (wi >= 0) {
     title = isMe(ps[wi]) ? 'Bravo, vous avez posé toutes vos tuiles !' : `${ps[wi].name} a posé toutes ses tuiles`;
     detail = `Bonus : 25 + ${others} (tuiles restantes des adversaires) = <b>+${bonus}</b>`;
   } else {
     title = 'La pioche est vide et tout le monde a passé';
     detail = `${isMe(ps[to]) ? 'Vous avez' : ps[to].name + ' a'} le moins de points en main et ${isMe(ps[to]) ? 'gagnez' : 'gagne'} ${others} − ${rem[to]} = <b>+${bonus}</b>`;
   }
-  const top = Math.max(...ps.map(p => p.score)), champs = ps.filter(p => p.score === top), champ = champs[0], tie = champs.length > 1;
-  const rows = ps.map((p, i) => `<tr class="${p.score === top ? 'win' : ''}"><td><span class="dot" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${p.color};margin-right:6px"></span>${isMe(p) && ONLINE ? p.name + ' (vous)' : p.name}</td><td class="n">${rem[i]}</td><td class="n">${p.score}</td></tr>`).join('');
+  // en cas d'abandon, le vainqueur est le meilleur score parmi ceux qui restent
+  const alive = ff != null ? ps.filter((p, i) => i !== ff) : ps;
+  const top = Math.max(...alive.map(p => p.score)), champs = alive.filter(p => p.score === top), champ = champs[0], tie = champs.length > 1;
+  const rows = ps.map((p, i) => `<tr class="${alive.includes(p) && p.score === top ? 'win' : ''}"><td><span class="dot" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${p.color};margin-right:6px"></span>${isMe(p) && ONLINE ? p.name + ' (vous)' : p.name}</td><td class="n">${rem[i]}</td><td class="n">${p.score}</td></tr>`).join('');
   const ns = ps[G.nextStarter];
   showModal(`
-    <h2>${tie ? '🤝 Égalité !' : isMe(champ) ? '🏆 Victoire !' : `🏆 ${champ.name} gagne`}</h2>
+    <h2>${tie ? '🤝 Égalité !' : isMe(champ) ? '🏆 Victoire !' : `🏆 ${champ.name} gagne`}${ff != null && !tie ? ' <small style="opacity:.7;font-size:15px">par abandon</small>' : ''}</h2>
     <p>${title}${/[!.]$/.test(title) ? '' : '.'}</p>
     <p>${detail}</p>
     <table class="res"><tr><th>Joueur</th><th style="text-align:right">En main</th><th style="text-align:right">Score</th></tr>${rows}</table>
     <p style="opacity:.75;font-size:13.5px;margin-top:10px">Revanche : ${isMe(ns) ? 'vous commencerez' : ns.name + ' commencera'}.</p>
-    <div class="mfoot"><button class="btn ghostbtn" id="mNew">Nouvelle partie</button><button class="btn primary" id="mRematch">🔁 Revanche</button></div>`);
-  $('mNew').onclick = showSetup; $('mRematch').onclick = rematch;
+    <div class="mfoot" style="flex-wrap:wrap"><button class="btn ghostbtn" id="mHome">🏠 Quitter</button><button class="btn ghostbtn" id="mNew">Nouvelle partie</button><button class="btn primary" id="mRematch">🔁 Revanche</button></div>`);
+  $('mNew').onclick = showSetup; $('mRematch').onclick = rematch; $('mHome').onclick = goHome;
+}
+// abandon : la partie s'arrête pour tout le monde, l'autre joueur l'emporte
+function forfeit() {
+  if (!G || G.over) return;
+  clearTimeout(aiTimer); hideModal();
+  const rem = G.players.map(p => p.hand.reduce((s, t) => s + tsum(t), 0)), me = meP();
+  G.over = true; G.undoSnap = null; G.result = { ff: ME, wi: -1, to: -1, bonus: 0, others: 0, rem };
+  sel = null; ghost = null; targetMap = new Map(); G.mode = null;
+  addLog(vous(me) ? '🏳️ Vous abandonnez la partie' : `🏳️ ${me.name} abandonne la partie`);
+  render();
+  showEnd();
+}
+function confirmForfeit() {
+  const others = G.players.filter((p, i) => i !== ME).map(p => p.name).join(' et ');
+  showModal(`<h2>🏳️ Abandonner la partie ?</h2><p>La partie s’arrête ${ONLINE ? 'pour vous deux' : ''} et ${others} ${G.players.length > 2 ? 'gagnent' : 'gagne'}.</p>
+    <div class="mfoot"><button class="btn ghostbtn" id="mNo">Continuer à jouer</button><button class="btn primary" id="mYes">Abandonner</button></div>`);
+  $('mNo').onclick = hideModal; $('mYes').onclick = forfeit;
+}
+// retour à l'accueil : en ligne, la partie terminée est effacée (les deux joueurs reviennent à l'accueil)
+function goHome() {
+  hideModal();
+  if (ONLINE && Net) {
+    const base = gameVer;
+    Net.tx(c => (c && c.ver === base && c.status !== 'playing') ? null : undefined).then(ok => { if (!ok && lastRemote) applyRemote(lastRemote); }).catch(netError);
+    G = null; ONLINE = false; showLobby();
+  } else showSetup();
 }
 function rematch() {
   hideModal();
@@ -772,13 +803,14 @@ function showBonus() {
   $('modal').querySelectorAll('[data-use]').forEach(b => b.onclick = () => { hideModal(); usePower(b.dataset.use); });
 }
 function showMenu() {
-  if (!G) return showSetup();
+  if (!G) return ONLINE || (Net && !TRAINING) ? showLobby() : showSetup();
   showModal(`<button class="mclose" id="mX">✕</button><h2>Triominos</h2>
     <p style="margin:0;opacity:.75">Pioche : ${G.pool.length} tuiles · Vous : ${meP().score} pts${ONLINE ? ' · en ligne avec ' + G.players.filter(p => p !== meP()).map(p => p.name).join(', ') : ''}</p>
     <div class="menuList">
       <button class="btn" id="mmHelp">❓ Comment marquer des points</button>
       <button class="btn" id="mmBonus">✨ Les bonus de la partie</button>
       <button class="btn" id="mmRules">📖 Règles complètes</button>
+      ${G.over ? '' : '<button class="btn" id="mmQuit">🏳️ Abandonner la partie</button>'}
       <button class="btn" id="mmNew">＋ Nouvelle partie</button>
       ${isStandalone() ? '' : '<button class="btn" id="mmInstall">📲 Installer l’application</button>'}
     </div>
@@ -786,6 +818,7 @@ function showMenu() {
     ${G.log.length ? `<h3>Derniers coups</h3><div class="histo">${G.log.slice(-8).reverse().map(x => `<div>${x.t}</div>`).join('')}</div>` : ''}`);
   $('mX').onclick = hideModal;
   $('mmHelp').onclick = showHelp; $('mmBonus').onclick = showBonus;
+  if ($('mmQuit')) $('mmQuit').onclick = confirmForfeit;
   $('mmRules').onclick = () => showRules(showMenu); $('mmNew').onclick = () => (ONLINE && !G.over) ? confirmAbandon() : showSetup();
   if ($('mmInstall')) $('mmInstall').onclick = installApp;
   if ($('mmOnline')) $('mmOnline').onclick = () => TRAINING ? leaveTraining() : (hideModal(), logout());
