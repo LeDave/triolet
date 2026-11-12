@@ -1,0 +1,1545 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Triominos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Rubik:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{--gold:#f2c14e;--ink:#f6f1e3;--panel:rgba(8,28,22,.82);--wood1:#4a321d;--wood2:#2e1f11}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;height:100dvh;background:#0b1f19;color:var(--ink);font-family:'Fredoka',system-ui,sans-serif;overflow:hidden;-webkit-user-select:none;user-select:none}
+body{display:flex;flex-direction:column}
+.btn{font-family:inherit;font-size:15px;font-weight:600;border:0;border-radius:10px;padding:9px 14px;cursor:pointer;background:#2b4a3f;color:var(--ink);transition:transform .1s,background .15s,opacity .15s;white-space:nowrap}
+.btn:hover:not(:disabled){background:#356053}
+.btn:active:not(:disabled){transform:scale(.97)}
+.btn:disabled{opacity:.38;cursor:not-allowed}
+.btn.primary{background:var(--gold);color:#2a1d07}
+.btn.primary:hover:not(:disabled){background:#ffd468}
+.btn.ghostbtn{background:transparent;border:1px solid rgba(255,255,255,.2)}
+.btn.small{padding:6px 10px;font-size:13px}
+
+#boardWrap{flex:1;position:relative;overflow:hidden;background:radial-gradient(ellipse at 50% 45%,#23704f 0%,#17513c 55%,#0e3226 100%);touch-action:none}
+#board{width:100%;height:100%;display:block;cursor:grab}
+#board.panning{cursor:grabbing}
+#world.smooth{transition:transform .45s cubic-bezier(.3,.8,.3,1)}
+#tiles>g,#ghostL>g{filter:drop-shadow(1px 2.5px 1.5px rgba(0,0,0,.42))}
+.body{fill:url(#tg);stroke:url(#tg);stroke-width:6;stroke-linejoin:round}
+.bevel{fill:none;stroke:rgba(255,255,255,.95);stroke-width:1.4;stroke-linejoin:round}
+.hlp{fill:none;stroke:none;stroke-width:13;stroke-linejoin:round}
+.tbar{fill:#151515}
+.tdot{fill:#f5c518;stroke:#c99700;stroke-width:.6}
+.tnum{font-family:'Rubik','Arial Black','Segoe UI',system-ui,sans-serif!important;font-weight:700!important;fill:#151515}
+.tstar{fill:#e11d2a;stroke:#9b1019;stroke-width:.6;stroke-linejoin:round}
+svg text{font-family:'Fredoka',system-ui,sans-serif;font-weight:700;text-anchor:middle;dominant-baseline:central;pointer-events:none}
+.fresh{animation:drop .4s cubic-bezier(.3,1.5,.5,1);transform-box:fill-box;transform-origin:center}
+@keyframes drop{from{transform:scale(1.35);opacity:0}to{transform:scale(1);opacity:1}}
+.ghost{cursor:pointer;opacity:.93}
+.ghost .hlp{stroke:#f2c14e;opacity:.85}
+.pop{font-size:26px;fill:#fff;stroke:#0c2a20;stroke-width:5px;paint-order:stroke;animation:rise 1.7s ease-out forwards;transform-box:fill-box}
+.pop.bonus{fill:var(--gold);font-size:22px}
+@keyframes rise{0%{opacity:0;transform:translateY(8px)}15%{opacity:1}75%{opacity:1}100%{opacity:0;transform:translateY(-46px)}}
+
+/* ---- boutons flottants ---- */
+.fab{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;width:52px;height:52px;border-radius:50%;border:0;cursor:pointer;font-family:inherit;color:var(--ink);background:rgba(8,28,22,.78);backdrop-filter:blur(6px);box-shadow:0 3px 10px rgba(0,0,0,.35);font-size:22px;line-height:1;transition:transform .12s,opacity .15s}
+.fab:active:not(:disabled){transform:scale(.93)}
+.fab:disabled{opacity:.35;cursor:not-allowed}
+.fab.sm{width:40px;height:40px;font-size:18px}
+.fab .cap{position:absolute;bottom:-17px;left:50%;transform:translateX(-50%);font-size:11.5px;font-weight:600;white-space:nowrap;text-shadow:0 1px 3px rgba(0,0,0,.8)}
+.fab .badge{position:absolute;top:-3px;right:-3px;min-width:19px;height:19px;padding:0 5px;border-radius:10px;background:var(--gold);color:#2a1d07;font-size:11.5px;font-weight:700;line-height:19px;font-style:normal}
+.fab.gold{background:linear-gradient(#ffd468,#e6a92b);color:#3a2604}
+.fab.warn{background:linear-gradient(#a78bfa,#7c3aed)}
+.fab.pile{border-radius:0;background:none;box-shadow:none;width:58px;height:52px;backdrop-filter:none}
+.fab.pile svg{position:absolute;inset:0;filter:drop-shadow(0 3px 4px rgba(0,0,0,.4))}
+.fab.pile b{position:relative;font-size:16px;color:#3a2604;margin-top:-12px}
+.fab.hidden{display:none}
+#menuBtn{position:absolute;top:10px;left:10px;z-index:5}
+#sideR{position:absolute;right:12px;bottom:22px;display:flex;flex-direction:column;align-items:center;gap:26px;z-index:5}
+#sideL{position:absolute;left:12px;bottom:22px;display:flex;flex-direction:column;align-items:center;gap:26px;z-index:5}
+#fitBtn{position:absolute;right:12px;top:14px;z-index:5}
+#top{position:absolute;top:8px;left:76px;right:64px;display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none;z-index:4}
+
+/* ---- adversaires ---- */
+#opps{display:flex;justify-content:center;flex-wrap:wrap;gap:6px}
+.opp{display:flex;align-items:center;gap:8px;background:rgba(8,28,22,.78);backdrop-filter:blur(6px);border-radius:999px;padding:4px 12px 4px 4px;border:2px solid transparent;transition:border-color .2s,box-shadow .2s}
+.opp.active{border-color:var(--gold);box-shadow:0 0 0 4px rgba(242,193,78,.18)}
+.onl{position:absolute;right:-1px;bottom:-1px;width:10px;height:10px;border-radius:50%;background:#22c55e;border:2px solid #0b1f19}
+.onl.off{background:#6b7280}
+.av{position:relative;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;color:#10241c;font-size:16px;flex:0 0 auto}
+.oinfo{display:flex;flex-direction:column;line-height:1.05}
+.oname{font-size:12.5px;opacity:.85}
+.oscore{font-size:19px;font-weight:700;color:var(--gold)}
+.backs{display:flex;gap:1px;align-items:center}
+.backs i{width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:10px solid #e9e2cf}
+.backs small{font-size:11px;opacity:.8;margin-left:3px}
+.think{display:inline-block;animation:blink 1s infinite}
+@keyframes blink{50%{opacity:.3}}
+.badge2{background:var(--gold);color:#2a1d07;border-radius:6px;padding:0 5px;font-size:11px;font-weight:700;margin-left:3px}
+.spyhand{display:flex;flex-wrap:wrap;gap:3px;max-width:200px}
+.spyhand span{background:#fbf5e6;color:#141414;border-radius:4px;padding:0 4px;font-size:11px;font-weight:500}
+
+/* ---- message et notifications ---- */
+#pill{max-width:560px;background:rgba(8,28,22,.82);backdrop-filter:blur(6px);border-radius:14px;padding:6px 14px;font-size:14px;line-height:1.3;text-align:center;pointer-events:none;z-index:4}
+#pill:empty{display:none}
+#pill b{color:var(--gold)}
+#toasts{display:flex;flex-direction:column;align-items:center;gap:4px;max-width:100%}
+#toasts div{background:rgba(6,22,17,.7);padding:3px 11px;border-radius:9px;font-size:12.5px;animation:toastA 3s ease forwards;text-align:center}
+@keyframes toastA{0%{opacity:0;transform:translateY(-6px)}8%{opacity:1;transform:none}80%{opacity:1}100%{opacity:0}}
+#banner{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%) scale(.6);opacity:0;pointer-events:none;font-size:36px;font-weight:700;color:var(--gold);text-shadow:0 3px 0 #5b3f07,0 6px 24px rgba(0,0,0,.6);white-space:nowrap;z-index:6}
+#banner.show{animation:bannerA 1.9s ease-out forwards}
+@keyframes bannerA{0%{opacity:0;transform:translate(-50%,-50%) scale(.6)}15%{opacity:1;transform:translate(-50%,-50%) scale(1.08)}25%{transform:translate(-50%,-50%) scale(1)}80%{opacity:1}100%{opacity:0;transform:translate(-50%,-62%) scale(1)}}
+
+/* ---- barre d'action flottante (poser / reprise / annuler) ---- */
+#abar{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);display:flex;gap:6px;z-index:6;align-items:center}
+#abar:empty{display:none}
+#abar .btn{box-shadow:0 4px 14px rgba(0,0,0,.4);padding:10px 14px}
+.undoBtn{position:relative;overflow:hidden}
+.undoBtn::after{content:'';position:absolute;left:0;bottom:0;height:4px;width:100%;background:#3a2604;transform-origin:left;animation:undoT var(--t,3.2s) linear forwards}
+@keyframes undoT{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+
+/* ---- main du joueur ---- */
+footer{flex:0 0 auto;display:flex;align-items:center;gap:10px;background:linear-gradient(#e7b54a,#c98f22);border-top:3px solid #fff3d1;box-shadow:0 -4px 16px rgba(0,0,0,.35);padding:6px 10px max(6px,env(safe-area-inset-bottom)) 8px}
+#me{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:1px}
+.meScore{width:54px;height:54px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#7ee08a,#2f9b48);border:3px solid #fff7df;display:flex;align-items:center;justify-content:center;font-size:21px;font-weight:700;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.45);box-shadow:0 2px 6px rgba(0,0,0,.3);transition:box-shadow .2s}
+#me.active .meScore{box-shadow:0 0 0 4px rgba(255,255,255,.55),0 2px 6px rgba(0,0,0,.3)}
+.meName{font-size:11.5px;font-weight:600;color:#3a2604;display:flex;gap:2px;align-items:center}
+#hand{flex:1;display:flex;flex-wrap:wrap;gap:3px 2px;align-content:flex-start;padding:2px;min-height:52px;max-height:34vh;overflow-y:auto;scrollbar-width:thin}
+.htile{touch-action:none;-webkit-touch-callout:none;display:block;flex:0 0 auto;background:none;border:0;padding:0;cursor:grab;transition:opacity .15s;filter:drop-shadow(0 2px 2px rgba(80,50,0,.45))}
+.htile svg{display:block;width:70px;height:auto}
+.htile.dragging{opacity:.25}
+.htile.wait{cursor:pointer}
+.htile.pick .hlp{stroke:#7c2d12;stroke-width:10}
+.htile.pick{cursor:pointer}
+#dragTile{position:fixed;left:0;top:0;pointer-events:none;z-index:40;filter:drop-shadow(0 10px 12px rgba(0,0,0,.5));transition:opacity .12s}
+#dragTile.snapped{opacity:0}
+body.dragmode,body.dragmode *{cursor:grabbing!important}
+.hslot{position:relative;flex:0 0 auto}
+.hslot.drawn{animation:drawnA .5s cubic-bezier(.3,1.4,.5,1)}
+@keyframes drawnA{from{transform:translateY(-60px) scale(.6);opacity:0}to{transform:none;opacity:1}}
+.hslot.fav+.hslot:not(.fav){margin-left:5px;padding-left:6px;border-left:2px dotted rgba(58,38,4,.35)}
+.hslot.fav .body{fill:#fff1c2;stroke:#fff1c2}
+.hslot.bkt .body{fill:#ffe39a;stroke:#ffe39a}
+.hslot.bkt{margin-right:6px}
+.hbk{position:absolute;top:-4px;right:-4px;width:22px;height:22px;border-radius:50%;background:#f2c14e;border:1.5px solid #8a5a00;font-size:12px;line-height:19px;text-align:center;pointer-events:none;z-index:2;box-shadow:0 1px 3px rgba(0,0,0,.35)}
+.hbtn{position:absolute;top:-2px;left:-3px;width:20px;height:20px;border-radius:50%;border:0;background:rgba(58,38,4,.35);color:#fff;font-size:11px;cursor:pointer;padding:0;line-height:20px;font-family:inherit;z-index:2}
+.hbtn:not(.on){opacity:.5}
+.hbtn.on{background:#7c2d12;color:var(--gold);opacity:1}
+.spin{animation:spin .25s cubic-bezier(.3,1.3,.5,1);transform-origin:37px 44.33px}
+@keyframes spin{from{transform:rotate(-120deg)}to{transform:none}}
+.ghost.hint .hlp{animation:hintGlow 1s ease-in-out infinite}
+@keyframes hintGlow{50%{stroke:#fff7d6}}
+.bombable{cursor:pointer}
+.bombable .hlp{stroke:#dc2626;animation:bombp 1s ease-in-out infinite}
+@keyframes bombp{50%{stroke:#fca5a5}}
+
+/* ---- fenêtres ---- */
+.overlay{position:fixed;inset:0;background:rgba(3,12,9,.62);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;z-index:50;padding:14px}
+.overlay[hidden]{display:none}
+.modal{background:#12352a;border:1px solid rgba(255,255,255,.1);border-radius:18px;padding:20px 22px;max-width:520px;width:100%;max-height:90vh;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.5);position:relative}
+.modal h2{margin:0 0 6px;font-size:24px}
+.modal h3{margin:14px 0 6px;font-size:15.5px;color:var(--gold)}
+.modal p,.modal li{font-size:14.5px;line-height:1.45;opacity:.92}
+.modal ul{padding-left:20px;margin:6px 0}
+.mclose{position:absolute;top:10px;right:10px;width:34px;height:34px;border-radius:50%;border:0;background:rgba(255,255,255,.08);color:var(--ink);font-size:18px;cursor:pointer}
+.opts{display:flex;gap:6px;flex-wrap:wrap}
+.opt{font-family:inherit;font-size:15px;padding:8px 14px;border-radius:10px;border:2px solid rgba(255,255,255,.15);background:transparent;color:var(--ink);cursor:pointer}
+.opt.on{border-color:var(--gold);background:rgba(242,193,78,.14)}
+.opts.multi .opt{font-size:14px;padding:6px 11px}
+.minirow{display:flex;gap:6px;margin-top:8px}
+.mfoot{display:flex;gap:8px;justify-content:flex-end;margin-top:18px}
+table.res{width:100%;border-collapse:collapse;margin-top:10px;font-size:15px}
+table.res th,table.res td{padding:7px 6px;text-align:left;border-bottom:1px solid rgba(255,255,255,.08)}
+table.res td.n{text-align:right;font-weight:600}
+table.res tr.win td{color:var(--gold)}
+.hero{display:flex;justify-content:center;margin:4px 0 10px}
+.oppbtns{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.helpsec{margin:4px 0 0}
+.helptbl{width:100%;border-collapse:collapse;font-size:14px}
+.helptbl td{padding:5px 4px;border-bottom:1px solid rgba(255,255,255,.07);vertical-align:top}
+.helptbl td.n{text-align:right;font-weight:700;color:var(--gold);white-space:nowrap}
+.lobby{text-align:center}
+.inp{display:block;width:100%;margin-top:4px;padding:11px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(0,0,0,.25);color:var(--ink);font-family:inherit;font-size:16px}
+.lobby .big{font-size:44px;margin:4px 0}
+.lobby p{margin:6px 0}
+.gbtn{display:inline-flex;align-items:center;gap:10px;background:#fff;color:#1f1f1f;border:0;border-radius:999px;padding:11px 20px;font-family:inherit;font-size:16px;font-weight:600;cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.3)}
+.spinner{width:28px;height:28px;border:3px solid rgba(255,255,255,.2);border-top-color:var(--gold);border-radius:50%;animation:spinA 1s linear infinite;margin:10px auto}
+@keyframes spinA{to{transform:rotate(360deg)}}
+.menuList{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.menuList .btn{text-align:left;padding:12px 14px}
+.histo{margin-top:12px;font-size:13px;opacity:.8;display:flex;flex-direction:column;gap:3px}
+/* liste des bonus */
+.rule{background:rgba(242,193,78,.1);border:1px solid rgba(242,193,78,.3);border-radius:10px;padding:8px 11px;font-size:13.5px;line-height:1.4;margin:8px 0 10px}
+.bitem{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.07)}
+.bitem .bic{font-size:26px;width:36px;text-align:center;flex:0 0 auto;line-height:1.1}
+.bitem .btx{flex:1;min-width:0}
+.bitem .bt{font-weight:700;font-size:15px}
+.bitem .bt small{font-weight:500;opacity:.7;margin-left:4px}
+.bitem .bd{font-size:13.5px;opacity:.88;line-height:1.35;margin-top:1px}
+.bitem .bw{font-size:12.5px;color:var(--gold);opacity:.9;margin-top:3px}
+.bitem .bx{font-size:12px;opacity:.65;margin-top:2px;font-style:italic}
+.bitem .btn{flex:0 0 auto;align-self:center;padding:8px 12px;font-size:14px}
+.tagOn{display:inline-block;background:var(--gold);color:#2a1d07;border-radius:6px;padding:0 6px;font-size:11.5px;font-weight:700;margin-left:4px}
+
+@media (max-width:720px){
+  .fab{width:46px;height:46px;font-size:20px}
+  .fab.sm{width:36px;height:36px;font-size:16px}
+  .fab.pile{width:50px;height:45px}
+  .fab .cap{font-size:10.5px;bottom:-15px}
+  #menuBtn{top:8px;left:8px}
+  #fitBtn{right:8px;top:12px}
+  #top{left:62px;right:52px;top:6px;gap:5px}
+  #sideR{right:8px;bottom:20px;gap:22px}
+  #sideL{left:8px;bottom:20px;gap:22px}
+  #opps{gap:4px}
+  .opp{padding:3px 9px 3px 3px;gap:6px}
+  .av{width:28px;height:28px;font-size:13px}
+  .oscore{font-size:16px}
+  .oname{font-size:11px}
+  .backs i{border-left-width:4.5px;border-right-width:4.5px;border-top-width:8px}
+  #pill{font-size:12.5px;padding:5px 10px}
+  #toasts div:not(:last-child){display:none}
+  #toasts div{font-size:11.5px}
+  #banner{font-size:24px}
+  footer{gap:7px;padding:5px 6px max(5px,env(safe-area-inset-bottom)) 6px}
+  .meScore{width:44px;height:44px;font-size:17px;border-width:2px}
+  .meName{font-size:10.5px}
+  #hand{max-height:28vh;min-height:44px}
+  .htile svg{width:55px}
+  .hbtn{width:17px;height:17px;line-height:17px;font-size:9.5px;top:-3px;left:-3px}
+  .hbk{width:19px;height:19px;font-size:10.5px;line-height:16px;top:-5px;right:-4px}
+  #abar .btn{padding:9px 11px;font-size:14px}
+  .modal{padding:16px}
+  .modal h2{font-size:21px}
+  .bitem{padding:8px 0;gap:8px}
+  .bitem .bic{font-size:21px;width:28px}
+  .bitem .bt{font-size:14px}
+  .bitem .bd{font-size:12.5px}
+  .bitem .bw{font-size:11.5px}
+  .bitem .btn{padding:7px 10px;font-size:13px}
+  .rule{font-size:12.5px}
+}
+@media (max-width:400px){ .htile svg{width:51px} }
+</style>
+</head>
+<body>
+<div id="boardWrap">
+  <svg id="board">
+    <defs>
+      <linearGradient id="tg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".55" stop-color="#f4f2ee"/><stop offset="1" stop-color="#d6d3cc"/></linearGradient>
+      <pattern id="grid" patternUnits="userSpaceOnUse" width="64" height="110.851">
+        <path id="gridPath" fill="none" stroke="rgba(255,255,255,.055)" stroke-width="1"/>
+      </pattern>
+    </defs>
+    <g id="world">
+      <rect x="-30000" y="-30000" width="60000" height="60000" fill="url(#grid)"/>
+      <g id="targets"></g>
+      <g id="tiles"></g>
+      <g id="ghostL"></g>
+      <g id="fx"></g>
+    </g>
+  </svg>
+  <button class="fab gold" id="menuBtn" title="Menu" aria-label="Menu">☰</button>
+  <div id="top"><div id="opps"></div><div id="pill"></div><div id="toasts"></div></div>
+  <button class="fab sm" id="fitBtn" title="Recentrer le plateau" aria-label="Recentrer">◎</button>
+  <div id="banner"></div>
+  <div id="sideL">
+    <button class="fab" id="bonusBtn" aria-label="Bonus"><span>✨</span><i class="badge" id="bonusBadge"></i><span class="cap">Bonus</span></button>
+  </div>
+  <div id="sideR">
+    <button class="fab" id="hintBtn" aria-label="Conseil"><span>💡</span><i class="badge" id="hintBadge"></i><span class="cap">Conseil</span></button>
+    <button class="fab pile" id="drawBtn" aria-label="Piocher"><svg viewBox="0 0 58 52"><polygon points="4,4 54,4 29,48" fill="#f2c14e" stroke="#fff7df" stroke-width="3" stroke-linejoin="round"/></svg><b id="poolN">0</b><span class="cap">Pioche −5</span></button>
+    <button class="fab warn hidden" id="passBtn" aria-label="Passer"><span>🏳️</span><span class="cap" id="passCap">Passer −10</span></button>
+  </div>
+  <div id="abar"></div>
+</div>
+
+<footer>
+  <div id="me"><div class="meScore" id="meScore">0</div><div class="meName" id="meName">Vous</div></div>
+  <div id="hand"></div>
+</footer>
+
+<div class="overlay" id="overlay" hidden><div class="modal" id="modal"></div></div>
+
+<script src="config.js" onerror="window.FIREBASE_CONFIG=null"></script>
+<script>
+(() => {
+'use strict';
+/* ---------- Géométrie de la grille triangulaire ---------- */
+const S = 64, H = S * Math.sqrt(3) / 2;
+const COLORS = ['#64748b', '#e11d48', '#f97316', '#16a34a', '#2563eb', '#9333ea'];
+const NAMES = ['Vous', 'Léa', 'Hugo', 'Inès'];
+const PCOL = ['#f2c14e', '#5eead4', '#f472b6', '#a78bfa'];
+const K = (a, b) => a + ',' + b;
+const isUp = (c, r) => ((c + r) & 1) === 0;
+// sommets dans l'ordre horaire
+const cellVerts = (c, r) => isUp(c, r) ? [[c + 1, r], [c + 2, r + 1], [c, r + 1]] : [[c, r], [c + 2, r], [c + 1, r + 1]];
+const edgeNbs = (c, r) => [[c - 1, r], [c + 1, r], isUp(c, r) ? [c, r + 1] : [c, r - 1]];
+const vpx = ([vx, vy]) => [vx * S / 2, vy * H];
+const vertexCells = (vx, vy) => { const o = []; for (const r of [vy - 1, vy]) for (let c = vx - 2; c <= vx; c++) o.push([c, r]); return o; };
+
+/* ---------- Tuiles ---------- */
+const TILES = [];
+for (let a = 0; a <= 5; a++) for (let b = a; b <= 5; b++) for (let c = b; c <= 5; c++) TILES.push([a, b, c]);
+const tsum = t => t[0] + t[1] + t[2];
+const sortHand = h => h.sort((x, y) => (y.fav ? 1 : 0) - (x.fav ? 1 : 0) || x[0] - y[0] || x[1] - y[1] || x[2] - y[2]);
+const hv = t => { const r = t.rot || 0; return [t[r], t[(r + 1) % 3], t[(r + 2) % 3]]; };
+const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.random() * (i + 1) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; };
+
+/* ---------- État ---------- */
+const POWERS = [
+  { k: 'gift', ic: '🎁', l: 'Donner', tip: 'Offrir une de vos tuiles à un adversaire' },
+  { k: 'swap', ic: '🔄', l: 'Échanger', tip: 'Remettre une tuile dans la pioche et en tirer une autre, sans pénalité' },
+  { k: 'double', ic: '✖2', l: 'Double', tip: 'Votre prochaine tuile posée compte double, bonus compris' },
+  { k: 'spy', ic: '👀', l: 'Espion', tip: 'Voir les tuiles des adversaires pendant votre tour' },
+  { k: 'freeze', ic: '🔒', l: 'Gel de la pioche', tip: 'Le prochain adversaire ne pourra pas piocher : s’il ne peut rien poser, il doit passer (−10)' },
+  { k: 'joker', ic: '🃏', l: 'Joker', tip: 'Un coin de votre prochaine tuile peut valoir n’importe quel nombre' },
+  { k: 'undo', ic: '🔁', l: 'Reprise', tip: 'Reprendre la tuile que vous venez de poser et rejouer (vous perdez ses points)', fixed: true },
+  { k: 'steal', ic: '🎯', l: 'Vol', tip: 'Prendre une tuile au hasard chez un adversaire' },
+  { k: 'bomb', ic: '💣', l: 'Bombe', tip: 'Retirer une tuile en bordure du plateau ; son poseur perd ses points' },
+  { k: 'rafale', ic: '⚡', l: 'Rafale', tip: 'Poser deux tuiles dans le même tour' },
+  { k: 'chest', ic: '🎲', l: 'Coffre surprise', tip: 'Compléter un hexagone fait gagner un bonus au hasard', passive: true }
+];
+const PW = Object.fromEntries(POWERS.map(x => [x.k, x]));
+const isOn = k => !!(PW[k] && (PW[k].fixed ? cfg.undos > 0 : cfg.bonus.includes(k)));
+let cfg = { opp: 1, level: 'expert', dist: 'tiles', btiles: 8, uses: 1, hints: 2, undos: 1, bonus: ['swap', 'double', 'freeze'] };
+let G = null, sel = null, ghost = null, targetMap = new Map(), freshK = null, aiTimer = null;
+// ONLINE : partie en ligne ; ME : siège du joueur local (0 hors ligne)
+let ONLINE = false, ME = 0, SEATS = null;
+const cur = () => G.players[G.current];
+const meP = () => G.players[ME];
+const humanTurn = () => !!G && !G.over && G.current === ME && !cur().ai;
+// formulation « vous » seulement hors ligne (en ligne, le journal est partagé : on écrit les prénoms)
+const vous = p => !!(p && p.human && !ONLINE);
+
+/* ---------- Règles ---------- */
+function evalMove(t, c, r, rot, joker) {
+  const k = K(c, r);
+  if (G.board.has(k)) return null;
+  const vs = cellVerts(c, r);
+  const vals = [t[rot], t[(rot + 1) % 3], t[(rot + 2) % 3]];
+  let jk = -1;
+  for (let i = 0; i < 3; i++) {
+    const v = G.vmap.get(K(vs[i][0], vs[i][1]));
+    if (v !== undefined && v !== vals[i]) { if (joker && jk < 0) jk = i; else return null; }
+  }
+  if (jk >= 0) vals[jk] = G.vmap.get(K(vs[jk][0], vs[jk][1]));
+  const nbs = edgeNbs(c, r).filter(n => G.board.has(K(n[0], n[1])));
+  if (G.board.size > 0 && nbs.length === 0) return null;
+  if (G.board.size === 0) {
+    const base0 = vals[0] + vals[1] + vals[2];
+    return { c, r, rot, vals, base: base0, bonus: 0, label: '', pts: base0, jk: -1 };
+  }
+  const base = vals[0] + vals[1] + vals[2];
+  let bonus = 0, label = '';
+  let hex = 0;
+  for (const v of vs) if (vertexCells(v[0], v[1]).every(([cc, rr]) => (cc === c && rr === r) || G.board.has(K(cc, rr)))) hex++;
+  if (hex) { bonus = 40 + 10 * hex; label = ['', 'Hexagone', 'Double hexagone', 'Triple hexagone'][hex]; }
+  else if (nbs.length === 1) {
+    const nv = new Set(cellVerts(nbs[0][0], nbs[0][1]).map(v => K(v[0], v[1])));
+    const opp = vs.find(v => !nv.has(K(v[0], v[1])));
+    if (G.vmap.has(K(opp[0], opp[1]))) { bonus = 40; label = 'Pont'; }
+  }
+  return { c, r, rot, vals, base, bonus, label, pts: base + bonus, jk };
+}
+function candidates() {
+  if (G.board.size === 0) return [[0, 0]];
+  const m = new Map();
+  for (const t of G.board.values()) for (const n of edgeNbs(t.c, t.r)) { const k = K(n[0], n[1]); if (!G.board.has(k)) m.set(k, n); }
+  return [...m.values()];
+}
+function movesFor(t, cands = candidates(), joker = false) {
+  const out = [];
+  for (const [c, r] of cands) {
+    const seen = new Set();
+    for (let rot = 0; rot < 3; rot++) {
+      const m = evalMove(t, c, r, rot, joker);
+      if (m) { const s = m.vals.join() + '|' + m.jk; if (!seen.has(s)) { seen.add(s); out.push(m); } }
+    }
+  }
+  return out;
+}
+function allMoves(hand, joker = false) {
+  const cands = candidates(), out = [];
+  hand.forEach((t, ti) => movesFor(t, cands, joker).forEach(m => { m.ti = ti; out.push(m); }));
+  return out;
+}
+
+/* ---------- Déroulement ---------- */
+function newGame(prevStarter) {
+  clearTimeout(aiTimer);
+  G = { gid: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), cfg: JSON.parse(JSON.stringify(cfg)),
+    players: [], round: 0, level: cfg.level, mode: null, spy: 0, chest: cfg.bonus.includes('chest'), log: [], logId: 0 };
+  const n = ONLINE ? SEATS.length : cfg.opp + 1;
+  for (let i = 0; i < n; i++) {
+    const powers = {}; POWERS.forEach(x => { if (!x.passive) powers[x.k] = x.fixed ? cfg.undos : cfg.bonus.includes(x.k) && cfg.dist === 'start' ? cfg.uses : 0; });
+    G.players.push({ name: ONLINE ? SEATS[i].name : NAMES[i], uid: ONLINE ? SEATS[i].uid : null, human: ONLINE ? i === ME : i === 0, ai: !ONLINE && i > 0,
+      score: 0, hand: [], color: PCOL[i], powers, hints: cfg.hints });
+  }
+  G.nextStarter = prevStarter == null ? null : (prevStarter + 1) % G.players.length;
+  shownEnd = null;
+  newRound();
+}
+function newRound() {
+  clearTimeout(aiTimer); hideModal();
+  G.round++; G.board = new Map(); G.vmap = new Map(); G.lastK = null; G.passes = 0; G.over = false; G.result = null; G.draws = 0; G.undoSnap = null;
+  G.pool = shuffle(TILES.map(t => t.slice()));
+  // tuiles ✨ : certaines tuiles portent un bonus, gagné en les posant
+  const bks = POWERS.filter(x => !x.passive && !x.fixed && cfg.bonus.includes(x.k)).map(x => x.k);
+  if (cfg.dist === 'tiles' && bks.length) shuffle(G.pool.slice()).slice(0, cfg.btiles).forEach(t => { t.bk = bks[Math.random() * bks.length | 0]; });
+  const n = G.players.length, deal = n === 2 ? 9 : 7;
+  G.players.forEach(p => { p.hand = sortHand(G.pool.splice(0, deal)); p.roundStart = p.score; });
+  G.freezeNext = false; G.drawFrozen = false; G.extra = false;
+  sel = null; ghost = null; targetMap = new Map();
+  let starter = G.nextStarter;
+  if (starter == null) {
+    // première partie : le joueur qui a le plus fort triple (sinon la plus forte tuile) commence
+    let best = null;
+    G.players.forEach((p, pi) => p.hand.forEach(t => {
+      const rank = (t[0] === t[2] ? 1000 : 0) + tsum(t);
+      if (!best || rank > best.rank) best = { pi, rank };
+    }));
+    starter = best.pi;
+  }
+  G.starter = starter; G.nextStarter = (starter + 1) % n;
+  G.current = starter;
+  view = { x: 0, y: 0, k: 1 }; fitView(false);
+  const p = cur();
+  addLog(vous(p) ? 'Vous commencez : posez la tuile de votre choix' : `${p.name} commence`);
+  render();
+  if (p.ai) aiTimer = setTimeout(aiTurn, 1100);
+}
+const UNDO_MS = 3500;
+function placeMove(pi, ti, m) {
+  const p = G.players[pi];
+  G.undoSnap = null; // le joueur suivant a joué : plus de reprise possible pour le précédent
+  const snap = { seat: pi, draws: G.draws, lastK: G.lastK, passes: G.passes, freezeNext: G.freezeNext, spy: G.spy, chest: null, bk: null };
+  const placedTile = p.hand.splice(ti, 1)[0];
+  const k = K(m.c, m.r);
+  cellVerts(m.c, m.r).forEach((v, i) => G.vmap.set(K(v[0], v[1]), m.vals[i]));
+  const cell = { c: m.c, r: m.r, vals: m.vals, owner: pi, jk: m.jk ?? -1, tile: null, pts: 0 };
+  const mult = p.doubleArmed ? 2 : 1;
+  if (mult === 2) p.doubleArmed = false;
+  if (m.jk >= 0) p.jokerArmed = false;
+  cell.tile = placedTile; cell.pts = m.pts * mult;
+  G.board.set(k, cell);
+  p.score += m.pts * mult; G.lastK = k; freshK = k; G.passes = 0;
+  addLog(`${p.name} ${vous(p) ? 'posez' : 'pose'} ${m.vals.join('-')} : +${m.pts * mult}${m.label ? ' (' + m.label + ' +' + m.bonus + ')' : ''}${mult === 2 ? ' ✖2' : ''}${m.jk >= 0 ? ' 🃏' : ''}`);
+  sel = null; ghost = null; targetMap = new Map();
+  const popTxt = '+' + m.base * mult, popSub = [m.bonus ? m.label + ' +' + m.bonus * mult : '', mult === 2 ? '✖2 Double !' : ''].filter(Boolean).join(' · ');
+  if (ONLINE) { G.popId = (G.popId || 0) + 1; G.pop = { id: G.popId, c: m.c, r: m.r, txt: popTxt, sub: popSub }; seenPop = G.popId; }
+  render();
+  ensureVisible(m.c, m.r);
+  pop(m.c, m.r, popTxt, popSub);
+  if (mult === 2 && !m.bonus) banner('✖2 Double ! +' + m.pts * 2);
+  else if (m.bonus) banner((m.label === 'Pont' ? '🌉 ' : /exagone/.test(m.label) ? '⬡ ' : '⭐ ') + m.label + ' ! +' + m.bonus);
+  if (placedTile.bk) {
+    const w = PW[placedTile.bk]; snap.bk = placedTile.bk; placedTile.bk = null;
+    p.powers[w.k] = (p.powers[w.k] || 0) + 1;
+    addLog(`✨ ${p.name} ${vous(p) ? 'gagnez' : 'gagne'} le bonus ${w.ic} ${w.l}`);
+    setTimeout(() => banner(`✨ ${w.ic} ${w.l} ${vous(p) ? 'gagné' : 'pour ' + p.name} !`), m.bonus || mult === 2 ? 1400 : 300);
+  }
+  if (G.chest && /exagone/.test(m.label)) {
+    const pool = POWERS.filter(x => !x.passive && !x.fixed && cfg.bonus.includes(x.k));
+    if (pool.length) {
+      const w = pool[Math.random() * pool.length | 0];
+      p.powers[w.k] = (p.powers[w.k] || 0) + 1; snap.chest = w.k;
+      addLog(`🎲 Coffre surprise : ${p.name} ${vous(p) ? 'gagnez' : 'gagne'} ${w.ic} ${w.l}`);
+      setTimeout(() => banner(`🎲 ${w.ic} ${w.l} pour ${p.name} !`), 1300);
+    }
+  }
+  if (p.hand.length === 0) { finishGame(pi); return; }
+  if (p.rafaleArmed) {
+    p.rafaleArmed = false; G.extra = true; G.draws = 0; G.aiPowerUsed = true;
+    addLog(`⚡ Rafale : ${p.name} ${vous(p) ? 'rejouez' : 'rejoue'} !`); setTimeout(() => banner('⚡ Rafale : encore une !'), 700);
+    render();
+    if (p.ai) aiTimer = setTimeout(aiTurn, 1100);
+    return;
+  }
+  // Reprise : possible tant que l'adversaire n'a pas joué
+  if (!p.ai && p.powers.undo > 0 && !G.extra) Object.assign(snap, { k, pts: m.pts * mult, tile: placedTile, mult, jk: m.jk ?? -1 });
+  else snap.k = null;
+  nextTurn(snap.k ? snap : null);
+}
+function nextTurn(undoSnap) {
+  G.current = (G.current + 1) % G.players.length;
+  G.drawFrozen = false;
+  if (G.freezeNext) {
+    G.freezeNext = false; G.drawFrozen = true;
+    const f = cur();
+    addLog(`🔒 ${vous(f) ? 'Votre pioche est gelée' : 'Pioche gelée pour ' + f.name} ce tour`); banner(`🔒 Pioche gelée${vous(f) ? '' : ' : ' + f.name}`);
+  }
+  G.extra = false; G.aiPowerUsed = false;
+  G.draws = 0; G.msg = ''; G.mode = null; G.spy = 0; sel = null; ghost = null; targetMap = new Map();
+  G.undoSnap = undoSnap && G.current !== undoSnap.seat ? undoSnap : null;
+  render();
+  if (cur().ai) aiTimer = setTimeout(aiTurn, G.undoSnap ? UNDO_MS : 950);
+}
+function doUndo() {
+  const u = G.undoSnap; if (!u || G.over || u.seat !== ME) return;
+  clearTimeout(aiTimer);
+  const me = G.players[u.seat];
+  removeCell(u.k);
+  me.score -= u.pts;
+  u.tile.rot = u.tile.rot || 0; me.hand.push(u.tile);
+  me.powers.undo--;
+  if (u.mult === 2) me.doubleArmed = true;
+  if (u.jk >= 0) me.jokerArmed = true;
+  if (u.chest && me.powers[u.chest] > 0) me.powers[u.chest]--;
+  if (u.bk) { if (me.powers[u.bk] > 0) me.powers[u.bk]--; u.tile.bk = u.bk; }
+  G.current = u.seat; G.draws = u.draws; G.lastK = G.board.has(u.lastK) ? u.lastK : null; G.passes = u.passes; G.freezeNext = u.freezeNext; G.drawFrozen = false; G.spy = u.spy;
+  G.undoSnap = null; G.extra = false; G.aiPowerUsed = false;
+  addLog(vous(me) ? `🔁 Vous reprenez ${u.tile.join('-')} (−${u.pts})` : `🔁 ${me.name} reprend sa tuile ${u.tile.join('-')} (−${u.pts})`); banner('🔁 Reprise !');
+  render();
+}
+function drawTile() {
+  const p = cur();
+  if (!G.pool.length || G.draws >= 3 || G.drawFrozen) return false;
+  G.undoSnap = null;
+  const t = G.pool.pop();
+  p.hand.push(t); // ajoutée en fin de main
+  if (p.human) drawnT = t;
+  p.score -= 5; G.draws++; G.msg = '';
+  addLog(`${p.name} pioche une tuile (−5)`, p.human ? `Vous piochez <b>${t.join('-')}</b>${t.bk ? ' ✨ ' + PW[t.bk].ic : ''} (−5)` : null);
+  sel = null; ghost = null; targetMap = new Map();
+  return true;
+}
+function passTurn() {
+  const p = cur();
+  G.undoSnap = null;
+  if (G.extra) { addLog(`${p.name} ${vous(p) ? 'terminez' : 'termine'} son tour`); nextTurn(); return; }
+  p.score -= 10; G.passes = G.pool.length === 0 ? G.passes + 1 : 0;
+  addLog(`${p.name} ${vous(p) ? 'passez' : 'passe'} (−10)`);
+  if (G.pool.length === 0 && G.passes >= G.players.length) { finishGame(-1); return; }
+  nextTurn();
+}
+function aiTurn() {
+  if (!G || G.over) return;
+  if (G.undoSnap) { G.undoSnap = null; render(); }
+  const p = cur(), ms = allMoves(p.hand);
+  const nextP = G.players[(G.current + 1) % G.players.length];
+  // Gel de la pioche : l'IA le lance quand l'adversaire a peu de tuiles (il risque d'être bloqué)
+  if (!G.aiPowerUsed && p.powers.freeze && !G.freezeNext && G.pool.length && nextP.hand.length <= 4 && Math.random() < .6) {
+    G.aiPowerUsed = true; p.powers.freeze--; G.freezeNext = true;
+    addLog(`🔒 ${p.name} gèle ${vous(nextP) ? 'votre pioche' : 'la pioche de ' + nextP.name} pour le prochain tour`); banner(`🔒 ${p.name} gèle ${vous(nextP) ? 'votre' : 'la'} pioche !`); render();
+    aiTimer = setTimeout(aiTurn, 900); return;
+  }
+  // Cadeau : l'IA offre sa plus grosse tuile si elle est bloquée
+  if (!G.aiPowerUsed && !ms.length && G.draws === 0 && p.powers.gift && p.hand.length > 2 && Math.random() < .7) {
+    G.aiPowerUsed = true;
+    let ti = 0; p.hand.forEach((t, i) => { if (tsum(t) > tsum(p.hand[ti])) ti = i; });
+    const others = G.players.filter(q => q !== p), to = others.reduce((a, b) => b.score > a.score ? b : a);
+    giveTile(p, ti, to);
+    aiTimer = setTimeout(aiTurn, 900); return;
+  }
+  if (ms.length) {
+    let m;
+    if (G.level === 'easy' && Math.random() < 0.6) m = ms[Math.random() * ms.length | 0];
+    else {
+      const sc = x => x.pts * 10 + tsum(p.hand[x.ti]) + (p.hand[x.ti].bk ? 60 : 0) + Math.random();
+      m = ms.reduce((a, b) => sc(b) > sc(a) ? b : a);
+    }
+    // Double : l'IA l'active sur un gros coup
+    if (!G.aiPowerUsed && p.powers.double && !p.doubleArmed && (m.pts >= 40 || (m.pts >= 13 && Math.random() < .35))) {
+      G.aiPowerUsed = true; p.powers.double--; p.doubleArmed = true;
+      addLog(`${p.name} active ✖2 Double !`); banner(`${p.name} : ✖2 Double !`); render();
+      aiTimer = setTimeout(() => placeMove(G.current, m.ti, m), 900); return;
+    }
+    placeMove(G.current, m.ti, m);
+    return;
+  }
+  if (G.extra) { passTurn(); return; }
+  if (drawTile()) { render(); aiTimer = setTimeout(aiTurn, 650); return; }
+  passTurn();
+}
+// fin de partie : calcule le résultat (une seule fois, chez le joueur qui a fini), puis chaque joueur l'affiche
+let shownEnd = null;
+function finishGame(wi) {
+  const ps = G.players, rem = ps.map(p => p.hand.reduce((s, t) => s + tsum(t), 0));
+  let to, others;
+  if (wi >= 0) { to = wi; others = rem.reduce((s, v, i) => i === wi ? s : s + v, 0); }
+  else { to = 0; rem.forEach((v, i) => { if (v < rem[to]) to = i; }); others = rem.reduce((s, v, i) => i === to ? s : s + v, 0); }
+  const bonus = wi >= 0 ? 25 + others : Math.max(0, others - rem[to]);
+  ps[to].score += bonus;
+  G.over = true; G.undoSnap = null; G.result = { wi, to, bonus, others, rem };
+  render();
+  setTimeout(showEnd, 900);
+}
+function showEnd() {
+  if (!G || !G.over || !G.result || shownEnd === G.gid) return;
+  shownEnd = G.gid;
+  const ps = G.players, { wi, to, bonus, others, rem } = G.result, me = ps[ME], isMe = p => p === me;
+  let title, detail;
+  if (wi >= 0) {
+    title = isMe(ps[wi]) ? 'Bravo, vous avez posé toutes vos tuiles !' : `${ps[wi].name} a posé toutes ses tuiles`;
+    detail = `Bonus : 25 + ${others} (tuiles restantes des adversaires) = <b>+${bonus}</b>`;
+  } else {
+    title = 'La pioche est vide et tout le monde a passé';
+    detail = `${isMe(ps[to]) ? 'Vous avez' : ps[to].name + ' a'} le moins de points en main et ${isMe(ps[to]) ? 'gagnez' : 'gagne'} ${others} − ${rem[to]} = <b>+${bonus}</b>`;
+  }
+  const top = Math.max(...ps.map(p => p.score)), champs = ps.filter(p => p.score === top), champ = champs[0], tie = champs.length > 1;
+  const rows = ps.map((p, i) => `<tr class="${p.score === top ? 'win' : ''}"><td><span class="dot" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${p.color};margin-right:6px"></span>${isMe(p) && ONLINE ? p.name + ' (vous)' : p.name}</td><td class="n">${rem[i]}</td><td class="n">${p.score}</td></tr>`).join('');
+  const ns = ps[G.nextStarter];
+  showModal(`
+    <h2>${tie ? '🤝 Égalité !' : isMe(champ) ? '🏆 Victoire !' : `🏆 ${champ.name} gagne`}</h2>
+    <p>${title}${/[!.]$/.test(title) ? '' : '.'}</p>
+    <p>${detail}</p>
+    <table class="res"><tr><th>Joueur</th><th style="text-align:right">En main</th><th style="text-align:right">Score</th></tr>${rows}</table>
+    <p style="opacity:.75;font-size:13.5px;margin-top:10px">Revanche : ${isMe(ns) ? 'vous commencerez' : ns.name + ' commencera'}.</p>
+    <div class="mfoot"><button class="btn ghostbtn" id="mNew">Nouvelle partie</button><button class="btn primary" id="mRematch">🔁 Revanche</button></div>`);
+  $('mNew').onclick = showSetup; $('mRematch').onclick = rematch;
+}
+function rematch() {
+  hideModal();
+  if (ONLINE) { SEATS = G.players.map(p => ({ uid: p.uid, name: p.name })); Object.assign(cfg, G.cfg); }
+  newGame(G.starter);
+}
+
+/* ---------- Actions joueur ---------- */
+function computeTargets() {
+  targetMap = new Map();
+  if (sel == null) return;
+  for (const m of movesFor(cur().hand[sel], undefined, !!cur().jokerArmed)) { const k = K(m.c, m.r); if (!targetMap.has(k)) targetMap.set(k, []); targetMap.get(k).push(m); }
+}
+// orientation préférée = celle de la tuile dans la main (pointe en haut), retournée pour une case pointe en bas
+function prefIdx(list, t) {
+  const r = t.rot || 0, m0 = list[0], pr = isUp(m0.c, m0.r) ? r : (r + 1) % 3;
+  const want = [t[pr], t[(pr + 1) % 3], t[(pr + 2) % 3]].join();
+  return Math.max(0, list.findIndex(m => m.vals.join() === want));
+}
+function selectTile(i) {
+  if (!humanTurn()) return;
+  G.msg = '';
+  sel = sel === i ? null : i; ghost = null; computeTargets(); render();
+}
+let spinI = null, drawnT = null;
+function rotateHand(i) {
+  const t = meP().hand[i]; if (!t) return;
+  t.rot = ((t.rot || 0) + 2) % 3; spinI = i; keepLocal(t);
+  if (sel === i && ghost) { ghost = null; sel = null; targetMap = new Map(); }
+  render();
+}
+function toggleFav(i) {
+  const h = meP().hand, t = h[i]; if (!t) return;
+  const selT = sel != null ? h[sel] : null;
+  t.fav = !t.fav; keepLocal(t); sortHand(h);
+  if (selT) sel = h.indexOf(selT);
+  render();
+}
+function clickCell(k) {
+  if (!humanTurn() || sel == null) return;
+  if (!targetMap.has(k)) { ghost = null; G.msg = '✗ Impossible de poser cette tuile ici.'; render(); return; }
+  G.msg = '';
+  if (ghost && ghost.k === k) {
+    if (ghost.list.length === 1) return confirmGhost();
+    ghost.i = (ghost.i + 1) % ghost.list.length;
+  } else { const list = targetMap.get(k); ghost = { k, list, i: prefIdx(list, cur().hand[sel]) }; }
+  render();
+}
+function rotateGhost() { if (ghost && ghost.list.length > 1) { ghost.i = (ghost.i + 1) % ghost.list.length; render(); } }
+function confirmGhost() { if (!ghost || !humanTurn()) return; const m = ghost.list[ghost.i]; placeMove(G.current, sel, m); }
+function cancelGhost() { ghost = null; render(); }
+function giveTile(from, ti, to) {
+  G.undoSnap = null;
+  const t = from.hand.splice(ti, 1)[0];
+  t.rot = 0; t.fav = false; keepLocal(t);
+  to.hand.push(t); if (to.human) sortHand(to.hand);
+  from.powers.gift--;
+  const txt = vous(from) ? `Vous offrez ${t.join('-')} à ${to.name}` : `${from.name} ${vous(to) ? 'vous offre' : 'offre à ' + to.name} ${t.join('-')}`;
+  addLog('🎁 ' + txt); banner('🎁 ' + txt);
+  sel = null; ghost = null; targetMap = new Map(); G.mode = null;
+  render();
+}
+function rebuildVmap() {
+  G.vmap = new Map();
+  for (const t of G.board.values()) cellVerts(t.c, t.r).forEach((v, i) => G.vmap.set(K(v[0], v[1]), t.vals[i]));
+}
+// une tuile peut être retirée si le reste du plateau reste d'un seul tenant
+function canRemove(k) {
+  if (G.board.size <= 1 || !G.board.has(k)) return false;
+  const rest = [...G.board.keys()].filter(x => x !== k), seen = new Set([rest[0]]), st = [rest[0]];
+  while (st.length) {
+    const [c, r] = st.pop().split(',').map(Number);
+    for (const n of edgeNbs(c, r)) { const nk = K(n[0], n[1]); if (nk !== k && G.board.has(nk) && !seen.has(nk)) { seen.add(nk); st.push(nk); } }
+  }
+  return seen.size === rest.length;
+}
+function removeCell(k) { G.board.delete(k); rebuildVmap(); if (G.lastK === k) G.lastK = null; }
+function chooseOpponent(title, me, cb) {
+  const opps = G.players.filter(q => q !== me && q.hand.length);
+  if (!opps.length) return;
+  if (opps.length === 1) return cb(opps[0]);
+  showModal(`<h2>${title}</h2><p>Choisissez un adversaire :</p>
+    <div class="oppbtns">${opps.map((q, j) => `<button class="btn" data-o="${j}"><span class="dot" style="display:inline-block;background:${q.color};margin-right:8px"></span>${q.name} — ${q.hand.length} tuiles, ${q.score} pts</button>`).join('')}</div>
+    <div class="mfoot"><button class="btn ghostbtn" id="mCancel">Annuler</button></div>`);
+  $('modal').querySelectorAll('[data-o]').forEach(b => b.onclick = () => { hideModal(); cb(opps[+b.dataset.o]); });
+  $('mCancel').onclick = () => { hideModal(); G.mode = null; render(); };
+}
+function powerAvailable(k) {
+  const me = meP();
+  if (!humanTurn() || !me.powers[k]) return false;
+  switch (k) {
+    case 'gift': return me.hand.length > 1;
+    case 'swap': return G.pool.length > 0;
+    case 'double': return !me.doubleArmed;
+    case 'spy': return !G.spy;
+    case 'freeze': return !G.freezeNext && G.pool.length > 0;
+    case 'joker': return !me.jokerArmed;
+    case 'undo': return false;
+    case 'steal': return G.players.some(q => q !== me && q.hand.length > 1);
+    case 'bomb': return [...G.board.keys()].some(canRemove);
+    case 'rafale': return !me.rafaleArmed && !G.extra;
+  }
+  return false;
+}
+function powerActive(k) {
+  const me = meP();
+  return G.mode === k || (k === 'double' && me.doubleArmed) || (k === 'joker' && me.jokerArmed) || (k === 'rafale' && me.rafaleArmed) || (k === 'spy' && G.spy === ME + 1) || (k === 'freeze' && G.freezeNext && humanTurn());
+}
+function usePower(kind) {
+  if (!powerAvailable(kind)) return;
+  const me = cur();
+  G.msg = ''; ghost = null; sel = null; targetMap = new Map();
+  if (kind === 'gift' || kind === 'swap' || kind === 'bomb') { G.mode = G.mode === kind ? null : kind; render(); return; }
+  G.mode = null; G.undoSnap = null;
+  if (kind === 'steal') {
+    chooseOpponent('🎯 Vol', me, q => {
+      const t = q.hand.splice(Math.random() * q.hand.length | 0, 1)[0];
+      t.rot = 0; t.fav = false; keepLocal(t); me.hand.push(t); me.powers.steal--;
+      addLog(`🎯 ${me.name} vole une tuile à ${q.name}`, `🎯 Vous volez ${t.join('-')} à ${q.name}`); banner(`🎯 Volé : ${t.join('-')}`, true); render();
+    });
+    return;
+  }
+  me.powers[kind]--;
+  if (kind === 'double') { me.doubleArmed = true; addLog(vous(me) ? '✖2 Double activé : votre prochaine tuile compte double' : `✖2 ${me.name} active Double`); banner(vous(me) ? '✖2 Double activé !' : `✖2 Double pour ${me.name} !`); }
+  if (kind === 'spy') { G.spy = G.current + 1; addLog(vous(me) ? '👀 Vous espionnez les mains adverses' : `👀 ${me.name} espionne vos tuiles`); }
+  if (kind === 'freeze') { G.freezeNext = true; const n = G.players[(G.current + 1) % G.players.length]; addLog(`🔒 ${n.name} ne pourra pas piocher au prochain tour`); banner(`🔒 Pioche de ${n.name} gelée !`); }
+  if (kind === 'joker') { me.jokerArmed = true; addLog(vous(me) ? '🃏 Joker activé : un coin de votre prochaine tuile vaut n’importe quel nombre' : `🃏 ${me.name} active un Joker`); banner('🃏 Joker activé !'); }
+  if (kind === 'rafale') { me.rafaleArmed = true; addLog(vous(me) ? '⚡ Rafale activée : vous poserez deux tuiles ce tour' : `⚡ ${me.name} active Rafale : deux tuiles ce tour`); banner('⚡ Rafale activée !'); }
+  render();
+}
+const WHEN = {
+  gift: 'Pendant votre tour, avant de poser (avant ou après une pioche).',
+  swap: 'Pendant votre tour, avant de poser. Gratuit : pas de −5.',
+  double: 'Avant de poser. S’applique à la prochaine tuile que vous posez.',
+  spy: 'Pendant votre tour. Les tuiles restent visibles jusqu’à la fin du tour.',
+  freeze: 'Pendant votre tour. À son prochain tour, l’adversaire suivant ne pourra pas piocher.',
+  joker: 'Avant de poser. Reste actif jusqu’à ce qu’un coin en ait besoin.',
+  undo: 'Juste après avoir posé : un bouton « Reprendre » apparaît tant que l’adversaire n’a pas joué.',
+  steal: 'Pendant votre tour, avant de poser.',
+  bomb: 'Pendant votre tour, avant de poser. Seules les tuiles en bordure peuvent sauter.',
+  rafale: 'Avant de poser. Après votre 1ʳᵉ tuile, vous en posez une 2ᵉ (ou terminez).',
+  chest: 'Automatique dès que vous complétez un hexagone.'
+};
+function whyNot(k) {
+  const me = meP();
+  if (!humanTurn()) return 'Attendez votre tour';
+  if (!me.powers[k] && k === 'undo') return 'Déjà utilisée';
+  if (!me.powers[k]) return cfg.dist === 'tiles' ? 'Pas encore gagné : posez une tuile ✨ qui porte ce bonus' : 'Épuisé';
+  if (k === 'undo') return 'Après avoir posé';
+  if (k === 'gift') return 'Il vous faut au moins 2 tuiles';
+  if (k === 'swap') return 'Pioche vide';
+  if (k === 'bomb') return 'Aucune tuile en bordure';
+  if (k === 'steal') return 'Aucun adversaire avec assez de tuiles';
+  return 'Déjà actif';
+}
+function showBonus() {
+  if (!G) return;
+  const me = meP();
+  const list = POWERS.filter(x => isOn(x.k));
+  const items = list.map(x => {
+    const n = x.passive ? null : (me.powers[x.k] || 0), act = !x.passive && powerActive(x.k), ok = !x.passive && powerAvailable(x.k);
+    const btn = x.passive ? '' : act && G.mode !== x.k ? '<span class="tagOn">Actif</span>' :
+      ok ? `<button class="btn primary" data-use="${x.k}">Utiliser</button>` : `<button class="btn" disabled>Utiliser</button>`;
+    return `<div class="bitem"><div class="bic">${x.ic}</div><div class="btx">
+      <div class="bt">${x.l}<small>${x.passive ? 'automatique' : x.fixed ? `${n}/${cfg.undos} · pour tous` : cfg.dist === 'tiles' ? `×${n}` : `${n}/${cfg.uses} restant${n > 1 ? 's' : ''}`}</small></div>
+      <div class="bd">${x.tip}.</div><div class="bw">⏱ ${WHEN[x.k]}</div>
+      ${!x.passive && !ok && !act ? `<div class="bx">${whyNot(x.k)}</div>` : ''}</div>${btn}</div>`;
+  }).join('');
+  showModal(`<button class="mclose" id="mX">✕</button><h2>✨ Bonus</h2>
+    ${cfg.dist === 'tiles' ? '<div class="rule">✨ Certaines tuiles portent un bonus (pastille dorée). Vous le <b>gagnez en posant</b> la tuile, pas en la piochant.</div>' : ''}
+    <div class="rule">Les bonus se jouent <b>pendant votre tour</b>, avant ou après une pioche, mais <b>avant de poser</b> votre tuile (poser termine le tour).${cfg.undos ? ' Seule la <b>Reprise</b> se joue juste après avoir posé.' : ''}</div>
+    ${items || '<p>Aucun bonus pour cette partie.</p>'}`);
+  $('mX').onclick = hideModal;
+  $('modal').querySelectorAll('[data-use]').forEach(b => b.onclick = () => { hideModal(); usePower(b.dataset.use); });
+}
+function showMenu() {
+  if (!G) return showSetup();
+  showModal(`<button class="mclose" id="mX">✕</button><h2>Triominos</h2>
+    <p style="margin:0;opacity:.75">Pioche : ${G.pool.length} tuiles · Vous : ${meP().score} pts${ONLINE ? ' · en ligne avec ' + G.players.filter(p => p !== meP()).map(p => p.name).join(', ') : ''}</p>
+    <div class="menuList">
+      <button class="btn" id="mmHelp">❓ Comment marquer des points</button>
+      <button class="btn" id="mmBonus">✨ Les bonus de la partie</button>
+      <button class="btn" id="mmRules">📖 Règles complètes</button>
+      <button class="btn" id="mmNew">＋ Nouvelle partie</button>
+    </div>
+      ${ONLINE || (TRAINING && Net) ? `<button class="btn" id="mmOnline">${TRAINING ? '🌐 Revenir au jeu en ligne' : '🔑 Changer de prénom ou de mot de passe'}</button>` : ''}
+    ${G.log.length ? `<h3>Derniers coups</h3><div class="histo">${G.log.slice(-8).reverse().map(x => `<div>${x.t}</div>`).join('')}</div>` : ''}`);
+  $('mX').onclick = hideModal;
+  $('mmHelp').onclick = showHelp; $('mmBonus').onclick = showBonus;
+  $('mmRules').onclick = () => showRules(showMenu); $('mmNew').onclick = () => (ONLINE && !G.over) ? confirmAbandon() : showSetup();
+  if ($('mmOnline')) $('mmOnline').onclick = () => TRAINING ? leaveTraining() : (hideModal(), logout());
+}
+function bombAt(k) {
+  if (!canRemove(k)) { G.msg = '💣 Choisissez une tuile en bordure (contour rouge).'; render(); return; }
+  G.undoSnap = null;
+  const cell = G.board.get(k), owner = G.players[cell.owner], me = cur();
+  removeCell(k);
+  owner.score -= cell.pts;
+  const t = cell.tile; t.rot = 0; t.fav = false;
+  G.pool.splice(Math.random() * (G.pool.length + 1) | 0, 0, t);
+  me.powers.bomb--; G.mode = null;
+  addLog(`💣 Boum ! ${t.join('-')} explose : ${vous(owner) ? 'vous perdez' : owner.name + ' perd'} ${cell.pts} pts`);
+  banner('💣 Boum ! −' + cell.pts);
+  render();
+}
+function applyMode(i) {
+  const me = cur(), t = me.hand[i];
+  if (!t) return;
+  if (G.mode === 'gift') {
+    if (me.hand.length < 2) { G.msg = 'Vous ne pouvez pas offrir votre dernière tuile.'; G.mode = null; render(); return; }
+    const opps = G.players.filter(q => q !== me);
+    if (opps.length === 1) return giveTile(me, i, opps[0]);
+    showModal(`<h2>🎁 Offrir ${t.join('-')}</h2><p>À qui voulez-vous donner cette tuile ?</p>
+      <div class="oppbtns">${opps.map((q, j) => `<button class="btn" data-o="${j}"><span class="dot" style="display:inline-block;background:${q.color};margin-right:8px"></span>${q.name} — ${q.hand.length} tuiles, ${q.score} pts</button>`).join('')}</div>
+      <div class="mfoot"><button class="btn ghostbtn" id="mCancel">Annuler</button></div>`);
+    $('modal').querySelectorAll('[data-o]').forEach(b => b.onclick = () => { hideModal(); giveTile(me, i, opps[+b.dataset.o]); });
+    $('mCancel').onclick = () => { hideModal(); G.mode = null; render(); };
+    return;
+  }
+  if (G.mode === 'swap') {
+    if (!G.pool.length) { G.mode = null; render(); return; }
+    G.undoSnap = null;
+    me.hand.splice(i, 1); t.rot = 0; t.fav = false;
+    G.pool.splice(Math.random() * (G.pool.length + 1) | 0, 0, t);
+    const nt = G.pool.splice(Math.random() * G.pool.length | 0, 1)[0];
+    me.hand.push(nt); drawnT = nt;
+    me.powers.swap--; G.mode = null;
+    addLog(`🔄 ${me.name} échange une tuile`, `🔄 Vous échangez ${t.join('-')} contre ${nt.join('-')}`); banner('🔄 Échange : ' + nt.join('-'), true);
+    render();
+  }
+}
+function hint() {
+  if (!humanTurn() || meP().hints <= 0) return;
+  meP().hints--;
+  const ms = allMoves(cur().hand, !!cur().jokerArmed);
+  if (!ms.length) { sel = null; ghost = null; G.msg = '💡 Aucune de vos tuiles ne peut être posée : piochez !'; banner('Aucune possibilité'); render(); return; }
+  const best = ms.reduce((a, b) => b.pts > a.pts ? b : a);
+  sel = best.ti; computeTargets();
+  const k = K(best.c, best.r), list = targetMap.get(k);
+  ghost = { k, list, i: Math.max(0, list.findIndex(x => x.vals.join() === best.vals.join())), hint: true };
+  G.msg = '';
+  render(); ensureVisible(best.c, best.r);
+}
+function cellAt(wx, wy) {
+  const r = Math.floor(wy / H), u = Math.floor(wx / (S / 2));
+  const sd = (p1, p2, p3) => (p1[0] - p3[0]) * (p2[1] - p3[1]) - (p2[0] - p3[0]) * (p1[1] - p3[1]);
+  for (let c = u - 2; c <= u + 1; c++) {
+    const [a, b, d] = cellPts(c, r), p = [wx, wy];
+    const d1 = sd(p, a, b), d2 = sd(p, b, d), d3 = sd(p, d, a);
+    if (!((d1 < 0 || d2 < 0 || d3 < 0) && (d1 > 0 || d2 > 0 || d3 > 0))) return [c, r];
+  }
+  return null;
+}
+
+/* ---------- Rendu ---------- */
+const $ = id => document.getElementById(id);
+const svg = $('board'), world = $('world'), Ltiles = $('tiles'), Ltargets = $('targets'), Lghost = $('ghostL'), Lfx = $('fx');
+$('gridPath').setAttribute('d', `M0 0H${S}M0 ${H}H${S}M${S / 2} 0L0 ${H}L${S / 2} ${2 * H}L${S} ${H}Z`);
+document.querySelector('#grid').setAttribute('height', 2 * H);
+const P = a => a.map(p => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
+
+function triSVG(pts, vals, o = {}) {
+  // tuile blanche arrondie, chiffres orientés vers le centre, point jaune au milieu ; o.jk : coin joué en joker
+  const cx = (pts[0][0] + pts[1][0] + pts[2][0]) / 3, cy = (pts[0][1] + pts[1][1] + pts[2][1]) / 3;
+  const ins = (p, f) => [p[0] + (cx - p[0]) * f, p[1] + (cy - p[1]) * f];
+  const body = P(pts.map(p => ins(p, .23)));
+  let s = `<g class="${o.cls || ''}" ${o.attr || ''}><polygon class="hlp" points="${body}"/><polygon class="body" points="${body}"/><polygon class="bevel" points="${P(pts.map(p => ins(p, .3)))}"/>`;
+  vals.forEach((v, i) => {
+    const q = ins(pts[i], o.ni ?? .56), dx = pts[i][0] - cx, dy = pts[i][1] - cy, d = Math.hypot(dx, dy);
+    const a = Math.atan2(-dx / d, dy / d) * 180 / Math.PI, x = q[0].toFixed(1), y = q[1].toFixed(1);
+    if (v === 1) {
+      const bh = o.fs * .72, bw = o.fs * .17;
+      s += `<rect class="tbar" x="${(q[0] - bw / 2).toFixed(1)}" y="${(q[1] - bh / 2).toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" rx="${(bw / 2).toFixed(1)}" transform="rotate(${a.toFixed(0)} ${x} ${y})"${o.jk === i ? ' style="fill:#c2410c"' : ''}/>`;
+    } else s += `<text class="tnum" x="${x}" y="${y}" font-size="${o.fs}" transform="rotate(${a.toFixed(0)} ${x} ${y})"${o.jk === i ? ' style="fill:#c2410c" text-decoration="underline"' : ''}>${v}</text>`;
+  });
+  if (o.bk && PW[o.bk]) s += `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${(o.fs * .62).toFixed(1)}" fill="#f2c14e" stroke="#b8860b" stroke-width="1"/><text x="${cx.toFixed(1)}" y="${(cy + o.fs * .03).toFixed(1)}" font-size="${(o.fs * .7).toFixed(1)}">${PW[o.bk].ic}</text>`;
+  else if (o.star) {
+    const R = o.fs * .42, r = R * .45, st = [];
+    for (let j = 0; j < 10; j++) { const a = -Math.PI / 2 + j * Math.PI / 5, rr = j % 2 ? r : R; st.push([cx + rr * Math.cos(a), cy + rr * Math.sin(a)]); }
+    s += `<polygon class="tstar" points="${P(st)}"/>`;
+  } else s += `<circle class="tdot" cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${(o.fs * .16).toFixed(1)}"/>`;
+  return s + '</g>';
+}
+const cellPts = (c, r) => cellVerts(c, r).map(vpx);
+const hexA = (hex, a) => hex + Math.round(a * 255).toString(16).padStart(2, '0');
+
+function render() { if (!G) return; renderBoard(); renderPlayers(); if (!(hd && hd.active)) renderHand(); renderActions(); sync(); }
+function renderBoard() {
+  let s = '';
+  for (const t of G.board.values()) {
+    const k = K(t.c, t.r);
+    const bombable = G.mode === 'bomb' && humanTurn() && canRemove(k);
+    s += triSVG(cellPts(t.c, t.r), t.vals, { fs: S * .245, jk: t.jk, star: k === G.lastK, attr: bombable ? `data-b="${k}"` : '', cls: (bombable ? 'bombable ' : '') + (k === G.lastK ? 'last' : '') + (k === freshK ? ' fresh' : '') });
+  }
+  Ltiles.innerHTML = s; freshK = null;
+  if (ghost) {
+    const m = ghost.list[ghost.i];
+    Lghost.innerHTML = triSVG(cellPts(m.c, m.r), m.vals, { fs: S * .245, jk: m.jk, cls: 'ghost' + (ghost.hint ? ' hint' : ''), attr: `data-k="${ghost.k}"` });
+  } else Lghost.innerHTML = '';
+}
+function renderPlayers() {
+  const nxt = G.players[(G.current + 1) % G.players.length];
+  $('opps').innerHTML = G.players.filter((p, i) => i !== ME).map(p => {
+    const i = G.players.indexOf(p), active = i === G.current && !G.over;
+    const n = p.hand.length, many = G.players.length > 2, shown = many ? 0 : Math.min(n, 12);
+    const badges = `${p.doubleArmed ? '<span class="badge2">✖2</span>' : ''}${(G.freezeNext && nxt === p) || (G.drawFrozen && cur() === p) ? '<span class="badge2">🔒</span>' : ''}`;
+    const online = ONLINE ? (PRESENCE[p.uid] ? '<span class="onl" title="En ligne"></span>' : '<span class="onl off" title="Hors ligne"></span>') : '';
+    return `<div class="opp ${active ? 'active' : ''}"><div class="av" style="background:${p.color}">${p.name[0]}${online}</div>
+      <div class="oinfo"><span class="oname">${p.name}${badges}${active ? ' <span class="think">…</span>' : ''}</span><span class="oscore">${p.score}</span></div>
+      ${G.spy === ME + 1 ? `<div class="spyhand">${p.hand.map(t => `<span>${t.join('-')}</span>`).join('')}</div>` : `<div class="backs">${many ? `<i></i><small>${n}</small>` : `${'<i></i>'.repeat(shown)}<small>${n}</small>`}</div>`}</div>`;
+  }).join('');
+  const me = meP();
+  $('meScore').textContent = me.score;
+  $('meName').innerHTML = `${ONLINE ? me.name : 'Vous'}${me.doubleArmed ? ' ✖2' : ''}${me.jokerArmed ? ' 🃏' : ''}${me.rafaleArmed ? ' ⚡' : ''}${(G.freezeNext && nxt === me) || (G.drawFrozen && cur() === me) ? ' 🔒' : ''}`;
+  $('me').classList.toggle('active', humanTurn());
+}
+function renderHand() {
+  const me = meP(), my = humanTurn();
+  const pts = [[37, 4], [72, 66], [2, 66]];
+  $('hand').innerHTML = me.hand.map((t, i) =>
+    `<div class="hslot ${t.fav ? 'fav' : ''} ${t.bk ? 'bkt' : ''} ${t === drawnT ? 'drawn' : ''}"><button class="htile ${my ? '' : 'wait'} ${my && (G.mode === 'gift' || G.mode === 'swap') ? 'pick' : ''}" data-i="${i}" aria-label="Tuile ${t.join('-')} (toucher pour tourner)">
+      <svg viewBox="0 0 74 70"><g class="${spinI === i ? 'spin' : ''}">${triSVG(pts, hv(t), { fs: 18, ni: .56 })}</g></svg></button>
+      ${t.bk ? `<span class="hbk" title="Bonus ${PW[t.bk].l} : gagné en posant cette tuile">${PW[t.bk].ic}</span>` : ''}<button class="hbtn ${t.fav ? 'on' : ''}" data-a="fav" data-i="${i}" title="${t.fav ? 'Retirer le marque-page' : 'Marquer cette tuile'}">★</button></div>`).join('');
+  spinI = null; drawnT = null;
+}
+function renderActions() {
+  const my = humanTurn(), A = $('abar'), st = $('pill'), me = meP();
+  // boutons latéraux
+  const canDraw = my && !G.mode && !G.drawFrozen && G.pool.length > 0 && G.draws < 3;
+  const canPass = my && !G.mode && (G.extra || G.drawFrozen || G.draws >= 3 || G.pool.length === 0);
+  $('poolN').textContent = G.pool.length;
+  // après 3 pioches, pioche vide ou pioche gelée : « Passer » prend la place de la pioche
+  const passInPile = canPass && !G.extra;
+  $('drawBtn').disabled = !canDraw;
+  $('drawBtn').classList.toggle('hidden', passInPile);
+  $('passBtn').classList.toggle('hidden', !passInPile);
+  $('hintBtn').disabled = !my || me.hints <= 0 || !!G.mode;
+  $('hintBadge').textContent = me.hints; $('hintBadge').style.display = me.hints ? '' : 'none';
+  const nb = POWERS.filter(x => !x.passive && isOn(x.k)).reduce((s, x) => s + (me.powers[x.k] || 0), 0);
+  $('bonusBadge').textContent = nb; $('bonusBadge').style.display = nb ? '' : 'none';
+
+  const mult = my && me.doubleArmed ? 2 : 1;
+  // barre d'action + message
+  const myUndo = G.undoSnap && G.undoSnap.seat === ME && !G.over;
+  if (myUndo) {
+    A.innerHTML = `<button class="btn primary ${ONLINE ? '' : 'undoBtn'}" id="aUndo" style="--t:${UNDO_MS}ms">🔁 Reprendre ma tuile (−${G.undoSnap.pts})</button>`;
+    $('aUndo').onclick = doUndo;
+  } else if (my && G.mode) {
+    A.innerHTML = '<button class="btn" id="aCancelMode">✕ Annuler</button>';
+    $('aCancelMode').onclick = () => { G.mode = null; G.msg = ''; render(); };
+  } else if (ghost && my && !(hd && hd.active)) {
+    const m = ghost.list[ghost.i];
+    A.innerHTML = `<button class="btn primary" id="aPlace">✓ Poser +${m.pts * mult}</button>
+      ${ghost.list.length > 1 ? '<button class="btn" id="aRot">↻</button>' : ''}<button class="btn" id="aCancel">✕</button>`;
+    $('aPlace').onclick = confirmGhost; if ($('aRot')) $('aRot').onclick = rotateGhost; $('aCancel').onclick = cancelGhost;
+  } else if (my && G.extra && !(hd && hd.active)) {
+    A.innerHTML = '<button class="btn" id="aEnd">Terminer le tour</button>';
+    $('aEnd').onclick = passTurn;
+  } else A.innerHTML = '';
+
+  if (hd && hd.active) {
+    if (ghost) {
+      const m = ghost.list[ghost.i];
+      st.innerHTML = `Lâchez pour poser : <b>+${m.pts * mult}</b>${mult === 2 ? ' ✖2' : ''}${m.bonus ? ` · ${m.label} !` : ''}${m.jk >= 0 ? ' · 🃏' : ''}`;
+    } else st.innerHTML = 'Approchez la tuile d’un bord où elle peut se connecter';
+    return;
+  }
+  if (G.over) st.textContent = 'Fin de la partie…';
+  else if (myUndo) st.innerHTML = ONLINE ? `Vous pouvez <b>reprendre</b> votre tuile tant que ${cur().name} n’a pas joué` : 'Vous pouvez encore <b>reprendre</b> votre tuile…';
+  else if (!my) st.innerHTML = `Au tour de <b>${cur().name}</b>${ONLINE && !PRESENCE[cur().uid] ? ' <small>(hors ligne)</small>' : ''}`;
+  else if (G.mode) st.innerHTML = G.msg || (G.mode === 'gift' ? '🎁 Touchez la tuile à <b>offrir</b>' : G.mode === 'swap' ? '🔄 Touchez la tuile à <b>échanger</b>' : '💣 Touchez une tuile en bordure (<b>contour rouge</b>)');
+  else if (ghost) {
+    const m = ghost.list[ghost.i];
+    st.innerHTML = m.bonus ? `<b>${m.label} !</b> ${m.base} + ${m.bonus}` : m.jk >= 0 ? '🃏 <b>Joker</b> utilisé' : '💡 Voici un coup possible';
+  }
+  else if (G.msg) st.innerHTML = G.msg;
+  else if (G.board.size === 0) st.innerHTML = '<b>À vous de commencer !</b> Posez la tuile de votre choix';
+  else if (G.extra) st.innerHTML = '⚡ <b>Rafale :</b> posez une 2ᵉ tuile ou terminez';
+  else if (G.drawFrozen) st.innerHTML = '🔒 <b>Pioche gelée :</b> posez une tuile ou passez (−10)';
+  else st.innerHTML = `<b>À vous !</b>${G.draws ? ` Pioches : ${G.draws}/3` : ''}`;
+}
+// pub : texte partagé (journal) ; priv : version privée affichée seulement au joueur concerné
+function addLog(pub, priv) {
+  if (!G) return;
+  G.logId = (G.logId || 0) + 1;
+  G.log.push({ id: G.logId, t: ONLINE ? pub : (priv || pub) }); if (G.log.length > 30) G.log.shift();
+  seenLog = G.logId;
+  toast(priv || pub);
+}
+function toast(t) {
+  const box = $('toasts'), d = document.createElement('div');
+  d.innerHTML = t; box.appendChild(d);
+  while (box.children.length > 2) box.firstChild.remove();
+  setTimeout(() => d.remove(), 3100);
+}
+function pop(c, r, txt, sub) {
+  const pts = cellPts(c, r), cx = (pts[0][0] + pts[1][0] + pts[2][0]) / 3, cy = (pts[0][1] + pts[1][1] + pts[2][1]) / 3;
+  const ns = 'http://www.w3.org/2000/svg';
+  const mk = (t, y, cls) => { const e = document.createElementNS(ns, 'text'); e.setAttribute('x', cx); e.setAttribute('y', y); e.setAttribute('class', cls); e.textContent = t; Lfx.appendChild(e); setTimeout(() => e.remove(), 1800); };
+  mk(txt, cy - 6, 'pop');
+  if (sub) mk(sub, cy + 22, 'pop bonus');
+}
+function bannerShow(t) { const b = $('banner'); b.textContent = t; b.classList.remove('show'); void b.offsetWidth; b.classList.add('show'); }
+function banner(t, localOnly) {
+  bannerShow(t);
+  if (ONLINE && G && !localOnly) { G.bnId = (G.bnId || 0) + 1; G.bn = { id: G.bnId, t }; seenBn = G.bnId; sync(); }
+}
+
+/* ---------- Vue : déplacement / zoom ---------- */
+let view = { x: 0, y: 0, k: 1 };
+function applyView(smooth) {
+  world.classList.toggle('smooth', !!smooth);
+  world.style.transform = `translate(${view.x}px,${view.y}px) scale(${view.k})`;
+}
+function fitView(smooth = true) {
+  const R = svg.getBoundingClientRect();
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  const cells = G && G.board.size ? [...G.board.values()] : [{ c: 0, r: 0 }];
+  for (const t of cells) for (const p of cellPts(t.c, t.r)) { x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); y0 = Math.min(y0, p[1]); y1 = Math.max(y1, p[1]); }
+  const pad = S * 1.6;
+  const k = Math.max(.3, Math.min(1.35, R.width / (x1 - x0 + 2 * pad), R.height / (y1 - y0 + 2 * pad)));
+  view = { k, x: R.width / 2 - (x0 + x1) / 2 * k, y: R.height / 2 - (y0 + y1) / 2 * k };
+  applyView(smooth);
+}
+function ensureVisible(c, r) {
+  const R = svg.getBoundingClientRect(), m = 50;
+  for (const p of cellPts(c, r)) {
+    const x = p[0] * view.k + view.x, y = p[1] * view.k + view.y;
+    if (x < m || y < m || x > R.width - m || y > R.height - m) return fitView(true);
+  }
+}
+function zoomAt(px, py, f, smooth) {
+  const k = Math.max(.25, Math.min(2.6, view.k * f));
+  const wx = (px - view.x) / view.k, wy = (py - view.y) / view.k;
+  view = { k, x: px - wx * k, y: py - wy * k }; applyView(smooth);
+}
+const ptrs = new Map(); let drag = null, pinch = null;
+const rel = e => { const R = svg.getBoundingClientRect(); return { x: e.clientX - R.left, y: e.clientY - R.top }; };
+svg.addEventListener('pointerdown', e => {
+  svg.setPointerCapture(e.pointerId);
+  const p = rel(e); ptrs.set(e.pointerId, p);
+  if (ptrs.size === 1) drag = { sx: p.x, sy: p.y, vx: view.x, vy: view.y, moved: false, target: e.target };
+  else if (ptrs.size === 2) {
+    const [a, b] = [...ptrs.values()]; if (drag) drag.moved = true;
+    pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), k: view.k, vx: view.x, vy: view.y, mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2 };
+  }
+});
+svg.addEventListener('pointermove', e => {
+  if (!ptrs.has(e.pointerId)) return;
+  const p = rel(e); ptrs.set(e.pointerId, p);
+  if (pinch && ptrs.size === 2) {
+    const [a, b] = [...ptrs.values()];
+    const k = Math.max(.25, Math.min(2.6, pinch.k * Math.hypot(a.x - b.x, a.y - b.y) / pinch.d));
+    const wx = (pinch.mx - pinch.vx) / pinch.k, wy = (pinch.my - pinch.vy) / pinch.k;
+    const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+    view = { k, x: mx - wx * k, y: my - wy * k }; applyView(false);
+  } else if (drag) {
+    const dx = p.x - drag.sx, dy = p.y - drag.sy;
+    if (!drag.moved && Math.hypot(dx, dy) > 6) { drag.moved = true; svg.classList.add('panning'); }
+    if (drag.moved) { view.x = drag.vx + dx; view.y = drag.vy + dy; applyView(false); }
+  }
+});
+const endPtr = e => {
+  ptrs.delete(e.pointerId);
+  if (ptrs.size < 2) pinch = null;
+  if (ptrs.size === 0) {
+    if (drag && !drag.moved && e.type === 'pointerup') {
+      if (G.mode === 'bomb' && humanTurn()) {
+        const c = cellAt((drag.sx - view.x) / view.k, (drag.sy - view.y) / view.k);
+        if (c && G.board.has(K(c[0], c[1]))) bombAt(K(c[0], c[1]));
+        drag = null; svg.classList.remove('panning'); return;
+      }
+      const el = drag.target.closest && drag.target.closest('[data-k]');
+      if (el) clickCell(el.getAttribute('data-k'));
+      else if (sel != null && G.board.size === 0) clickCell('0,0');
+      else if (sel != null) { const c = cellAt((drag.sx - view.x) / view.k, (drag.sy - view.y) / view.k); if (c) clickCell(K(c[0], c[1])); }
+    }
+    drag = null; svg.classList.remove('panning');
+  }
+};
+svg.addEventListener('pointerup', endPtr);
+svg.addEventListener('pointercancel', endPtr);
+svg.addEventListener('wheel', e => { e.preventDefault(); const p = rel(e); zoomAt(p.x, p.y, Math.exp(-e.deltaY * .0015), false); }, { passive: false });
+$('fitBtn').onclick = () => fitView(true);
+$('menuBtn').onclick = showMenu;
+$('bonusBtn').onclick = showBonus;
+$('hintBtn').onclick = hint;
+$('drawBtn').onclick = () => { if (humanTurn() && !G.mode && drawTile()) render(); };
+$('passBtn').onclick = () => { if (humanTurn() && (G.extra || G.drawFrozen || G.draws >= 3 || G.pool.length === 0)) passTurn(); };
+/* ---------- Glisser-déposer depuis la main ---------- */
+let hd = null, dragEl = null;
+// clic clavier (detail 0) ; les clics souris/tactiles passent par pointerup
+$('hand').addEventListener('click', e => {
+  const hb = e.target.closest('.hbtn');
+  if (hb) { toggleFav(+hb.dataset.i); return; }
+  const b = e.target.closest('.htile'); if (b && e.detail === 0) { if (G.mode && humanTurn()) applyMode(+b.dataset.i); else rotateHand(+b.dataset.i); }
+});
+// clic droit (souris) = marque-page ; l'appui long tactile ne fait rien
+$('hand').addEventListener('contextmenu', e => { const b = e.target.closest('.htile'); if (b) { e.preventDefault(); if (e.button === 2 && !(hd && hd.touch)) toggleFav(+b.dataset.i); } });
+$('hand').addEventListener('pointerdown', e => {
+  const b = e.target.closest('.htile');
+  if (!b || e.target.closest('.hbtn') || e.button > 0 || !G) return;
+  if (G.mode && humanTurn()) { e.preventDefault(); applyMode(+b.dataset.i); return; }
+  hd = { i: +b.dataset.i, sx: e.clientX, sy: e.clientY, id: e.pointerId, active: false, btn: b, canDrag: humanTurn(), touch: e.pointerType === 'touch', off: e.pointerType === 'touch' ? -46 : 0 };
+});
+function startHandDrag() {
+  hd.active = true; sel = hd.i; ghost = null; computeTargets();
+  hd.btn.classList.add('dragging'); document.body.classList.add('dragmode');
+  const k = view.k, w = S * k, h = H * k, t = cur().hand[sel];
+  dragEl = document.createElement('div'); dragEl.id = 'dragTile';
+  dragEl.innerHTML = `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">${triSVG([[w / 2, 0], [w, h], [0, h]], hv(t), { fs: S * .245 * k, bk: t.bk })}</svg>`;
+  hd.w = w; hd.h = h;
+  document.body.appendChild(dragEl);
+  render();
+}
+function moveHandDrag(x, y) {
+  y += hd.off;
+  dragEl.style.transform = `translate(${x - hd.w / 2}px,${y - hd.h * 2 / 3}px)`;
+  const R = svg.getBoundingClientRect();
+  let bestK = null;
+  if (x >= R.left && x <= R.right && y >= R.top && y <= R.bottom) {
+    const wx = (x - R.left - view.x) / view.k, wy = (y - R.top - view.y) / view.k;
+    let bd = S * .75;
+    for (const k of targetMap.keys()) {
+      const [c, r] = k.split(',').map(Number), p = cellPts(c, r);
+      const d = Math.hypot((p[0][0] + p[1][0] + p[2][0]) / 3 - wx, (p[0][1] + p[1][1] + p[2][1]) / 3 - wy);
+      if (d < bd) { bd = d; bestK = k; }
+    }
+  }
+  if (!bestK && G.board.size === 0 && targetMap.has('0,0') && x >= R.left && x <= R.right && y >= R.top && y <= R.bottom) bestK = '0,0';
+  if (bestK) {
+    if (!ghost || ghost.k !== bestK) {
+      const list = targetMap.get(bestK);
+      ghost = { k: bestK, list, i: prefIdx(list, cur().hand[sel]) };
+      render();
+    }
+  } else if (ghost) { ghost = null; render(); }
+  dragEl.classList.toggle('snapped', !!bestK);
+}
+function endHandDrag(drop) {
+  if (dragEl) { dragEl.remove(); dragEl = null; }
+  document.body.classList.remove('dragmode');
+  if (drop && ghost) { confirmGhost(); return; }
+  sel = null; ghost = null; targetMap = new Map(); render();
+}
+window.addEventListener('pointermove', e => {
+  if (!hd || e.pointerId !== hd.id) return;
+  if (!hd.active) { if (!hd.canDrag || !humanTurn() || Math.hypot(e.clientX - hd.sx, e.clientY - hd.sy) < 8) return; startHandDrag(); }
+  moveHandDrag(e.clientX, e.clientY);
+});
+window.addEventListener('pointerup', e => {
+  if (!hd || e.pointerId !== hd.id) return;
+  const d = hd; hd = null;
+  if (!d.active) { rotateHand(d.i); return; }
+  endHandDrag(true);
+});
+window.addEventListener('pointercancel', e => {
+  if (!hd || e.pointerId !== hd.id) return;
+  const a = hd.active; hd = null; if (a) endHandDrag(false);
+});
+window.addEventListener('wheel', e => { if (hd && hd.active) { e.preventDefault(); e.stopPropagation(); rotateGhost(); } }, { passive: false, capture: true });
+document.addEventListener('keydown', e => {
+  if (!$('overlay').hidden) return;
+  if (e.key === 'r' || e.key === 'R') { if (ghost) rotateGhost(); else if (sel != null) rotateHand(sel); }
+  else if (e.key === 'Enter') confirmGhost();
+  else if (e.key === 'Escape') { if (ghost) cancelGhost(); else if (sel != null) { sel = null; targetMap = new Map(); render(); } }
+});
+
+/* ---------- Fenêtres ---------- */
+function showModal(html) { $('modal').innerHTML = html; $('overlay').hidden = false; }
+function hideModal() { $('overlay').hidden = true; }
+function optGroup(name, items, val) {
+  return `<div class="opts" data-g="${name}">` + items.map(([v, l]) => `<button class="opt ${String(v) === String(val) ? 'on' : ''}" data-v="${v}">${l}</button>`).join('') + '</div>';
+}
+function showSetup() {
+  clearTimeout(aiTimer);
+  const onl = !!Net && !TRAINING, friend = onl && knownFriend();
+  showModal(`
+    <div class="hero"><svg width="150" height="70" viewBox="0 0 150 70">
+      ${triSVG([[40, 4], [74, 64], [6, 64]], [5, 5, 5], { fs: 15 })}
+      ${triSVG([[40, 4], [108, 4], [74, 64]], [5, 5, 3], { fs: 15 })}
+      ${triSVG([[108, 4], [142, 64], [74, 64]], [3, 5, 1], { fs: 15 })}
+    </svg></div>
+    <h2 style="text-align:center">Triominos</h2>
+    <p style="text-align:center;opacity:.75;margin-top:0">${onl ? (friend ? `Nouvelle partie en ligne contre <b>${friend.name}</b>` : 'Nouvelle partie en ligne : votre ami pourra la rejoindre') : 'Posez vos triangles en faisant correspondre les nombres aux coins.'}</p>
+    ${onl ? '' : `<h3>Adversaires</h3>${optGroup('opp', [[1, '1 ordinateur'], [2, '2 ordinateurs'], [3, '3 ordinateurs']], cfg.opp)}
+    <h3>Niveau</h3>${optGroup('level', [['easy', 'Facile'], ['expert', 'Expert']], cfg.level)}`}
+    <h3>Bonus spéciaux</h3>
+    <div class="opts multi" data-g="bonus">${POWERS.filter(x => !x.fixed).map(x => `<button class="opt ${cfg.bonus.includes(x.k) ? 'on' : ''}" data-v="${x.k}" title="${x.tip}">${x.ic} ${x.l}</button>`).join('')}</div>
+    <p style="font-size:12.5px;opacity:.7;margin:6px 0 0">🔁 La Reprise se règle à part, plus bas : chaque joueur en reçoit le même nombre.</p>
+    <div class="minirow"><button class="btn small ghostbtn" id="bAll">Tous</button><button class="btn small ghostbtn" id="bNone">Aucun</button></div>
+    <h3>Comment obtenir les bonus</h3>${optGroup('dist', [['tiles', '✨ En posant des tuiles bonus'], ['start', 'Dès le départ']], cfg.dist)}
+    ${cfg.dist === 'tiles' ? `<h3>Tuiles ✨ dans le jeu</h3>${optGroup('btiles', [[4, '4'], [8, '8'], [12, '12']], cfg.btiles)}` : `<h3>Utilisations de chaque bonus</h3>${optGroup('uses', [[1, '1×'], [2, '2×'], [3, '3×']], cfg.uses)}`}
+    <h3>Indices par partie</h3>${optGroup('hints', [[0, 'Aucun'], [2, '2'], [5, '5']], cfg.hints)}
+    <h3>🔁 Reprises par partie</h3>${optGroup('undos', [[0, 'Aucune'], [1, '1'], [2, '2']], cfg.undos)}
+    <div class="mfoot">${onl && G ? '<button class="btn ghostbtn" id="mBackGame">Retour</button>' : ''}<button class="btn ghostbtn" id="mRules">Règles</button><button class="btn primary" id="mGo">${onl ? (friend ? 'Lancer la partie' : 'Créer la partie') : 'Jouer'}</button></div>`);
+  const multi = document.querySelector('.opts.multi');
+  const syncB = () => { cfg.bonus = [...multi.querySelectorAll('.opt.on')].map(x => x.dataset.v); };
+  $('bAll').onclick = () => { multi.querySelectorAll('.opt').forEach(x => x.classList.add('on')); syncB(); };
+  $('bNone').onclick = () => { multi.querySelectorAll('.opt').forEach(x => x.classList.remove('on')); syncB(); };
+  document.querySelectorAll('.opts').forEach(g => g.addEventListener('click', e => {
+    const b = e.target.closest('.opt'); if (!b) return;
+    if (g === multi) { b.classList.toggle('on'); syncB(); return; }
+    g.querySelectorAll('.opt').forEach(x => x.classList.toggle('on', x === b));
+    const v = b.dataset.v; cfg[g.dataset.g] = isNaN(v) ? v : +v;
+    if (g.dataset.g === 'dist') showSetup();
+  }));
+  $('mGo').onclick = () => { hideModal(); if (onl) createOnline(); else newGame(); };
+  $('mRules').onclick = () => showRules(showSetup);
+  if ($('mBackGame')) $('mBackGame').onclick = () => { hideModal(); if (G && G.over) { shownEnd = null; showEnd(); } };
+}
+function showHelp() {
+  const g = G, me = g && g.players[ME];
+  const on = POWERS.filter(x => isOn(x.k));
+  const uses = cfg.uses;
+  const rows = [
+    ['Tuile posée', 'somme des 3 nombres'],
+    ['🌉 Pont', '+40'], ['⬡ Hexagone', '+50'], ['⬡ Double hexagone', '+60'], ['⬡ Triple hexagone', '+70'],
+    ['Piocher (3 max par tour)', '−5'], ['Passer (après 3 pioches, ou à tout moment si la pioche est vide)', '−10'],
+    ['Finir sa main en premier', '+25 + tuiles adverses'], ['Partie bloquée : le moins de points en main', 'gagne l’écart']
+  ];
+  const bonusList = on.length ? on.map(x => {
+    let left = '';
+    if (g && !x.passive) { const n = me.powers[x.k] || 0; left = ` — <i>${n ? `encore ${n}` : 'épuisé'}</i>`; }
+    return `<li><b>${x.ic} ${x.l}</b>${x.passive ? ' (automatique)' : ''} : ${x.tip}.${left}</li>`;
+  }).join('') : '<li>Aucun bonus n’est activé pour cette partie.</li>';
+  showModal(`<h2>❓ Aide</h2>
+    <h3>Comment marquer des points</h3>
+    <table class="helptbl">${rows.map(r => `<tr><td>${r[0]}</td><td class="n">${r[1]}</td></tr>`).join('')}</table>
+    <p style="font-size:13px;opacity:.75;margin:8px 0 0">Pont : la tuile touche le jeu par un côté et, par sa pointe opposée, une autre tuile. Hexagone : la tuile complète un cercle de 6 tuiles. À la fin, le plus gros score gagne.</p>
+    <h3>Bonus de cette partie <button class="btn small" id="hbBonus" style="margin-left:6px">Voir ✨</button></h3>
+    <p style="margin:0 0 4px;font-size:13.5px;opacity:.85">${on.filter(x => !x.passive).length} bonus actif${on.filter(x => !x.passive).length > 1 ? 's' : ''}, ${cfg.dist === 'tiles' ? `à gagner en posant une des <b>${cfg.btiles} tuiles ✨</b> du jeu` : `chacun utilisable <b>${uses}×</b> par partie`}. À utiliser pendant votre tour, avant de poser.</p>
+    <ul class="helpsec">${bonusList}</ul>
+    <p style="font-size:13.5px;opacity:.85">💡 Indices : ${g ? `encore <b>${me.hints}</b>` : `<b>${cfg.hints}</b> par partie`}. Un indice montre où l’une de vos tuiles peut aller, ou vous dit qu’aucune ne peut être posée.</p>
+    <h3>Commandes</h3><ul class="helpsec">
+      <li>Glissez une tuile sur le plateau : elle s’aimante là où elle se connecte et n’est posée qu’au lâcher.</li>
+      <li>Touchez une tuile de votre main pour la tourner ; ★ pour la marquer.</li></ul>
+    <div class="mfoot"><button class="btn primary" id="mBack">Fermer</button></div>`);
+  $('mBack').onclick = hideModal;
+  $('hbBonus').onclick = showBonus;
+}
+function showRules(back) {
+  showModal(`<h2>Règles du jeu</h2>
+    <h3>Le matériel</h3><p>56 tuiles triangulaires portant un nombre de 0 à 5 à chaque coin. Chaque joueur reçoit 9 tuiles (7 à partir de 3 joueurs), le reste forme la pioche.</p>
+    <h3>Poser une tuile</h3><ul>
+      <li>Une tuile doit toucher le jeu par au moins un côté.</li>
+      <li>Tous les coins qui se touchent doivent porter le même nombre.</li>
+      <li>On marque la somme des 3 nombres de la tuile posée.</li>
+      <li>À la première partie, le joueur qui a le triple le plus fort commence ; ensuite le premier joueur change à chaque revanche.</li>
+      <li>Celui qui commence pose la tuile de son choix.</li></ul>
+    <h3>Bonus</h3><ul>
+      <li><b>Pont</b> (+40) : la tuile touche le jeu par un côté et, par la pointe opposée, une autre tuile.</li>
+      <li><b>Hexagone</b> (+50) : la tuile complète un hexagone de 6 tuiles. Double : +60, triple : +70.</li></ul>
+    <h3>Pioche et pénalités</h3><ul>
+      <li>Piocher coûte −5 (3 tuiles maximum par tour).</li>
+      <li>Si vous ne pouvez toujours pas jouer, vous passez : −10.</li>
+      <li>Quand la pioche est vide, vous pouvez passer directement (−10), même si vous pourriez jouer. Si tous les joueurs passent à la suite, la partie se termine.</li></ul>
+    <h3>Fin de partie</h3><ul>
+      <li>La partie s’arrête dès qu’un joueur a posé toutes ses tuiles : il gagne +25 + la valeur des tuiles restantes des adversaires.</li>
+      <li>Ou quand la pioche est vide et que plus personne ne peut jouer : celui qui a le moins de points en main marque la différence.</li>
+      <li>Le joueur qui a le plus gros score gagne. Bouton « Revanche » pour rejouer.</li></ul>
+    <h3>Bonus spéciaux</h3><p>À choisir dans « Nouvelle partie ». Par défaut, certaines tuiles portent un bonus ✨ : vous le gagnez en posant la tuile (pas en la piochant). Option : recevoir les bonus dès le départ. Ils s’utilisent pendant votre tour, avant de poser.</p><ul>
+      <li><b>🎁 Donner</b> : offrez une de vos tuiles à un adversaire.</li>
+      <li><b>🔄 Échanger</b> : remettez une tuile dans la pioche et tirez-en une autre, sans pénalité.</li>
+      <li><b>✖2 Double</b> : votre prochaine tuile posée rapporte le double, bonus compris.</li>
+      <li><b>👀 Espion</b> : voyez les tuiles de vos adversaires pendant votre tour.</li>
+      <li><b>🔒 Gel de la pioche</b> : à son prochain tour, l’adversaire ne peut pas piocher ; s’il ne peut rien poser, il doit passer (−10).</li>
+      <li><b>🃏 Joker</b> : un coin de votre prochaine tuile peut valoir n’importe quel nombre (il apparaît souligné en orange).</li>
+      <li><b>🔁 Reprise</b> (chaque joueur en reçoit 0, 1 ou 2 selon le réglage de la partie, 1 par défaut) : juste après avoir posé, tant que l’adversaire n’a pas joué, reprenez votre tuile (vous perdez ses points) et rejouez.</li>
+      <li><b>🎯 Vol</b> : prenez une tuile au hasard chez un adversaire.</li>
+      <li><b>💣 Bombe</b> : faites exploser une tuile en bordure du plateau ; celui qui l’a posée perd ses points, et elle retourne dans la pioche.</li>
+      <li><b>⚡ Rafale</b> : posez deux tuiles dans le même tour.</li>
+      <li><b>🎲 Coffre surprise</b> (automatique) : compléter un hexagone fait gagner un bonus au hasard.</li>
+      <li>Les ordinateurs utilisent aussi « Donner », « Double » et « Gel de la pioche »… méfiez-vous !</li></ul>
+    <h3>Commandes</h3><ul>
+      <li><b>Poser :</b> faites glisser une tuile de votre main vers le plateau. Près d’un bord où elle peut se connecter, elle s’y aimante et pivote dans une orientation valide ; elle n’est posée qu’au lâcher (R ou molette pendant le glisser pour une autre orientation).</li>
+      <li><b>Tourner</b> une tuile de votre main : touchez-la.</li>
+      <li><b>Marquer</b> une tuile : bouton ★ (ou clic droit). Les tuiles marquées sont rangées à gauche.</li>
+      <li><b>Indice</b> : 2 par partie. Il montre où l’une de vos tuiles peut aller, ou vous dit qu’aucune ne peut être posée.</li>
+      <li>Glissez le plateau pour le déplacer, molette ou pincement pour zoomer.</li></ul>
+    <div class="mfoot"><button class="btn primary" id="mBack">${back ? 'Retour' : 'Fermer'}</button></div>`);
+  $('mBack').onclick = () => back ? back() : hideModal();
+}
+window.addEventListener('resize', () => { if (G) ensureVisible(0, 0); });
+
+/* ================= Jeu en ligne (Firebase) ================= */
+let Net = null, TRAINING = false, myUid = null, myName = '';
+let gameVer = 0, lastSynced = '', inflight = false, again = false, lastRemote = null, firstLoad = true;
+let seenLog = 0, seenBn = 0, seenPop = 0, PRESENCE = {}, LOCAL = {}, lastSeats = null;
+const tileKey = t => t[0] + '' + t[1] + t[2];
+// rotation et marque-page restent propres à chaque joueur (non partagés)
+function keepLocal(t) { LOCAL[tileKey(t)] = { rot: t.rot || 0, fav: !!t.fav }; }
+const T = t => ({ v: [t[0], t[1], t[2]], b: t.bk || null });
+function U(o) { const t = o.v.slice(); if (o.b) t.bk = o.b; const l = LOCAL[tileKey(t)]; if (l) { t.rot = l.rot; t.fav = l.fav; } return t; }
+function ser() {
+  const u = G.undoSnap;
+  return JSON.stringify({
+    gid: G.gid, cfg: G.cfg, round: G.round, current: G.current, draws: G.draws, passes: G.passes, over: !!G.over, result: G.result || null,
+    freezeNext: !!G.freezeNext, drawFrozen: !!G.drawFrozen, extra: !!G.extra, lastK: G.lastK || null, starter: G.starter, nextStarter: G.nextStarter,
+    spy: G.spy || 0, chest: !!G.chest, logId: G.logId || 0, log: G.log.slice(-20), bn: G.bn || null, bnId: G.bnId || 0, pop: G.pop || null, popId: G.popId || 0,
+    players: G.players.map(p => ({ name: p.name, uid: p.uid, color: p.color, score: p.score, hand: p.hand.map(T), powers: p.powers, hints: p.hints,
+      doubleArmed: !!p.doubleArmed, jokerArmed: !!p.jokerArmed, rafaleArmed: !!p.rafaleArmed })),
+    board: [...G.board.values()].map(c => ({ c: c.c, r: c.r, vals: c.vals, owner: c.owner, jk: c.jk, pts: c.pts, tile: T(c.tile) })),
+    pool: G.pool.map(T),
+    undo: u ? { seat: u.seat, k: u.k, pts: u.pts, tile: T(u.tile), mult: u.mult, jk: u.jk, chest: u.chest || null, bk: u.bk || null,
+      draws: u.draws, lastK: u.lastK || null, passes: u.passes, freezeNext: !!u.freezeNext, spy: u.spy || 0 } : null
+  });
+}
+function load(st) {
+  const keepMode = G && G.gid === st.gid && G.current === st.current ? G.mode : null;
+  G = { ...st, mode: keepMode, level: 'expert' };
+  G.players = st.players.map((p, i) => ({ ...p, hand: p.hand.map(U), human: i === ME, ai: false }));
+  G.board = new Map(st.board.map(c => [K(c.c, c.r), { ...c, tile: U(c.tile) }]));
+  G.pool = st.pool.map(U);
+  G.undoSnap = st.undo ? { ...st.undo, tile: U(st.undo.tile) } : null;
+  delete G.undo;
+  rebuildVmap();
+  Object.assign(cfg, st.cfg);
+}
+function sync() {
+  if (!ONLINE || !G || !Net || TRAINING) return;
+  if (inflight) { again = true; return; }
+  const s = ser(); if (s === lastSynced) return;
+  const base = gameVer, status = G.over ? 'over' : 'playing';
+  lastSynced = s; inflight = true;
+  Net.tx(curV => ((curV ? curV.ver : 0) !== base) ? undefined : { ver: base + 1, status, s, host: null, t: Date.now() })
+    .then(ok => {
+      inflight = false;
+      if (ok) gameVer = base + 1; else lastSynced = '';
+      if (lastRemote && (!ok || lastRemote.ver > gameVer)) applyRemote(lastRemote);
+      if (again) { again = false; sync(); }
+    })
+    .catch(err => { inflight = false; lastSynced = ''; netError(err); });
+}
+function onRemote(val) { lastRemote = val; if (!inflight) applyRemote(val); }
+function applyRemote(val) {
+  if (TRAINING || !myUid) return;
+  if (!val || (!val.s && val.status !== 'waiting')) { gameVer = val ? val.ver : 0; G = null; ONLINE = false; return showLobby(); }
+  gameVer = val.ver;
+  if (val.status === 'waiting') {
+    G = null; ONLINE = false;
+    return val.host && val.host.uid === myUid ? showWaiting(val) : showInvite(val);
+  }
+  if (val.s === lastSynced && G) return;
+  const st = JSON.parse(val.s), seat = st.players.findIndex(p => p.uid === myUid);
+  if (seat < 0) { G = null; ONLINE = false; return showModal(`<div class="lobby"><div class="big">🎲</div><h2>Partie en cours</h2><p>${st.players.map(p => p.name).join(' et ')} sont en train de jouer.</p></div>`); }
+  const wasMyTurn = G && humanTurn(), fresh = !G || G.gid !== st.gid;
+  ONLINE = true; ME = seat; lastSeats = st.players.map(p => ({ uid: p.uid, name: p.name }));
+  load(st);
+  lastSynced = ser();
+  sel = null; ghost = null; targetMap = new Map();
+  if (fresh || firstLoad) {
+    if (fresh) shownEnd = null;
+    hideModal(); view = { x: 0, y: 0, k: 1 }; fitView(false);
+    seenLog = G.logId || 0; seenBn = G.bn ? G.bn.id : 0; seenPop = G.pop ? G.pop.id : 0;
+    firstLoad = false;
+    render();
+  } else {
+    G.log.filter(x => x.id > seenLog).forEach(x => toast(x.t)); seenLog = G.logId || 0;
+    const newPop = G.pop && G.pop.id > seenPop ? G.pop : null;
+    if (newPop) { seenPop = newPop.id; freshK = K(newPop.c, newPop.r); }
+    render();
+    if (newPop) { ensureVisible(newPop.c, newPop.r); pop(newPop.c, newPop.r, newPop.txt, newPop.sub); }
+    if (G.bn && G.bn.id > seenBn) { seenBn = G.bn.id; bannerShow(G.bn.t); }
+  }
+  if (G.over && G.result && shownEnd !== G.gid) setTimeout(showEnd, fresh ? 0 : 900);
+  if (!wasMyTurn && humanTurn()) notifyTurn();
+}
+function notifyTurn() {
+  try { navigator.vibrate && navigator.vibrate(180); } catch (e) {}
+  if (document.hidden) document.title = '🔔 À vous ! · Triominos';
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden) document.title = 'Triominos'; });
+function knownFriend() {
+  const s = (G && ONLINE) ? G.players.map(p => ({ uid: p.uid, name: p.name })) : lastSeats;
+  return s && s.length === 2 ? s.find(x => x.uid !== myUid) : null;
+}
+// créer une partie : directement contre l'ami connu, sinon une invitation en attente
+function createOnline() {
+  const friend = knownFriend();
+  if (friend) {
+    SEATS = [{ uid: myUid, name: myName }, friend]; ME = 0; ONLINE = true;
+    newGame(null);
+    return;
+  }
+  const base = gameVer;
+  Net.tx(curV => ((curV ? curV.ver : 0) !== base) ? undefined : { ver: base + 1, status: 'waiting', host: { uid: myUid, name: myName }, cfg: JSON.parse(JSON.stringify(cfg)), s: null, t: Date.now() })
+    .then(ok => { if (!ok && lastRemote) applyRemote(lastRemote); }).catch(netError);
+}
+function joinOnline(val) {
+  Object.assign(cfg, val.cfg || {});
+  SEATS = [val.host, { uid: myUid, name: myName }]; ME = 1; ONLINE = true; gameVer = val.ver;
+  newGame(null);
+}
+function confirmAbandon() {
+  showModal(`<h2>Nouvelle partie ?</h2><p>La partie en cours sera abandonnée pour vous deux.</p>
+    <div class="mfoot"><button class="btn ghostbtn" id="mNo">Continuer la partie</button><button class="btn primary" id="mYes">Nouvelle partie</button></div>`);
+  $('mNo').onclick = hideModal; $('mYes').onclick = showSetup;
+}
+function startTraining() {
+  TRAINING = true; ONLINE = false; ME = 0;
+  showSetup();
+}
+function leaveTraining() {
+  clearTimeout(aiTimer); TRAINING = false; G = null; hideModal(); firstLoad = true; lastSynced = '';
+  if (lastRemote !== undefined) applyRemote(lastRemote); else showLobby();
+}
+function lobbyFoot() {
+  return `<div class="mfoot" style="justify-content:center;flex-wrap:wrap"><button class="btn ghostbtn small" id="lTrain">🤖 S’entraîner contre l’ordinateur</button><button class="btn ghostbtn small" id="lOut">🔑 Changer de mot de passe</button></div>`;
+}
+function bindLobbyFoot() { $('lTrain').onclick = startTraining; $('lOut').onclick = logout; }
+function showLobby() {
+  showModal(`<div class="lobby"><div class="big">🎲</div><h2>Bonjour ${myName} !</h2>
+    <p>Aucune partie en cours.</p><p style="font-size:13px;opacity:.7">Votre ami doit utiliser le même mot de passe pour voir votre partie.</p>
+    <p style="margin-top:14px"><button class="btn primary" id="lNew">Créer une partie</button></p></div>${lobbyFoot()}`);
+  $('lNew').onclick = showSetup; bindLobbyFoot();
+}
+function showWaiting(val) {
+  showModal(`<div class="lobby"><div class="big">⏳</div><h2>En attente de votre ami…</h2>
+    <p>Dites-lui d’ouvrir le jeu : il verra votre invitation.</p><div class="spinner"></div>
+    <p><button class="btn ghostbtn small" id="lCancel">Annuler la partie</button></p></div>${lobbyFoot()}`);
+  $('lCancel').onclick = () => { const base = gameVer; Net.tx(c => (c && c.ver === base) ? null : undefined).catch(netError); };
+  bindLobbyFoot();
+}
+function showInvite(val) {
+  const n = POWERS.filter(x => !x.passive && !x.fixed && (val.cfg.bonus || []).includes(x.k)).map(x => x.ic).join(' ');
+  showModal(`<div class="lobby"><div class="big">🎉</div><h2>${val.host.name} vous invite !</h2>
+    <p>Bonus de la partie : ${n || 'aucun'}</p>
+    <p style="margin-top:14px"><button class="btn primary" id="lJoin">Rejoindre la partie</button></p></div>${lobbyFoot()}`);
+  $('lJoin').onclick = () => { hideModal(); joinOnline(val); };
+  bindLobbyFoot();
+}
+// stockage local (prénom, identifiant de l'appareil, salle) ; le suffixe permet plusieurs joueurs factices en test
+let SK = 'trio_';
+const lsGet = k => { try { return localStorage.getItem(SK + k); } catch (e) { return null; } };
+const lsSet = (k, v) => { try { v == null ? localStorage.removeItem(SK + k) : localStorage.setItem(SK + k, v); } catch (e) {} };
+// le mot de passe devient l'adresse secrète de la partie (empreinte SHA-256)
+async function roomOf(pw) {
+  const data = new TextEncoder().encode('triominos|' + pw.trim());
+  const h = await crypto.subtle.digest('SHA-256', data);
+  return [...new Uint8Array(h)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+function logout() { lsSet('room', null); location.reload(); }
+function showLogin(err) {
+  G = null; ONLINE = false;
+  const fixedPw = !!(window.FIREBASE_CONFIG && window.FIREBASE_CONFIG.motDePasse);
+  showModal(`<div class="lobby"><div class="hero"><svg width="150" height="70" viewBox="0 0 150 70">
+      ${triSVG([[40, 4], [74, 64], [6, 64]], [5, 5, 5], { fs: 15 })}${triSVG([[40, 4], [108, 4], [74, 64]], [5, 5, 3], { fs: 15 })}${triSVG([[108, 4], [142, 64], [74, 64]], [3, 5, 1], { fs: 15 })}
+    </svg></div><h2>Triominos</h2><p>Partie privée entre amis.</p></div>
+    <form id="lForm" style="display:flex;flex-direction:column;gap:10px;margin-top:12px">
+      <label style="font-size:14px">Votre prénom<input id="lName" class="inp" maxlength="14" autocomplete="given-name" value="${(lsGet('name') || '').replace(/"/g, '')}"></label>
+      ${fixedPw ? '' : '<label style="font-size:14px">Mot de passe de la partie<input id="lPw" class="inp" type="password" autocomplete="current-password"></label><p style="font-size:12.5px;opacity:.7;margin:0">Le même que votre ami, au caractère près. Il reste enregistré sur cet appareil.</p>'}
+      <p id="lErr" style="color:#fca5a5;font-size:13.5px;margin:0">${err || ''}</p>
+      <button class="btn primary" type="submit" id="lGo">Entrer</button>
+    </form>
+    <div class="mfoot" style="justify-content:center"><button class="btn ghostbtn small" id="lTrain">🤖 S’entraîner contre l’ordinateur</button></div>`);
+  $('lTrain').onclick = startTraining;
+  $('lForm').onsubmit = async e => {
+    e.preventDefault();
+    const name = $('lName').value.trim(), pw = fixedPw ? String(window.FIREBASE_CONFIG.motDePasse) : $('lPw').value;
+    if (!name) return $('lErr').textContent = 'Indiquez votre prénom.';
+    if (pw.trim().length < 8) return $('lErr').textContent = 'Le mot de passe doit faire au moins 8 caractères.';
+    lsSet('name', name); lsSet('room', await roomOf(pw));
+    enterRoom();
+  };
+}
+function enterRoom() {
+  let uid = lsGet('uid');
+  if (!uid) { uid = Math.random().toString(36).slice(2) + Date.now().toString(36); lsSet('uid', uid); }
+  Net.connect(lsGet('room'));
+  onSignedIn({ uid, displayName: lsGet('name') });
+}
+function netError(err) {
+  const denied = /permission|PERMISSION_DENIED/i.test(String(err && (err.code || err.message || err)));
+  const room = lsGet('room') || '';
+  showModal(`<div class="lobby"><div class="big">${denied ? '⛔' : '📡'}</div><h2>${denied ? 'Accès refusé' : 'Problème de connexion'}</h2>
+    <p>${denied ? 'Mot de passe incorrect.' : 'Impossible de joindre le serveur. Vérifiez votre connexion.'}</p>
+    ${denied ? `<details style="text-align:left;margin-top:12px;font-size:13px;opacity:.85"><summary style="cursor:pointer">Installation : empreinte de ce mot de passe</summary>
+      <p>Lors de l’installation, copiez cette empreinte dans les règles Firebase (voir le guide). Elle ne permet pas de retrouver le mot de passe.</p>
+      <input class="inp" id="lHash" readonly value="${room}" style="font-size:12px;font-family:monospace">
+      <p style="margin-top:8px"><button class="btn small" id="lCopy">Copier l’empreinte</button> <span id="lCopied" style="opacity:.8"></span></p></details>` : ''}</div>
+    <div class="mfoot" style="justify-content:center"><button class="btn ghostbtn small" id="lOut">🔑 Changer de mot de passe</button><button class="btn primary small" id="lRe">Réessayer</button></div>`);
+  $('lOut').onclick = logout;
+  $('lRe').onclick = () => location.reload();
+  if ($('lCopy')) $('lCopy').onclick = () => {
+    const f = $('lHash'); f.select();
+    (navigator.clipboard ? navigator.clipboard.writeText(f.value) : Promise.reject()).then(() => $('lCopied').textContent = 'Copiée ✓')
+      .catch(() => { try { document.execCommand('copy'); $('lCopied').textContent = 'Copiée ✓'; } catch (e) { $('lCopied').textContent = 'Sélectionnez et copiez le texte'; } });
+  };
+}
+function onSignedIn(user) {
+  myUid = user.uid;
+  myName = (user.displayName || 'Joueur').slice(0, 14);
+  showModal('<div class="lobby"><div class="spinner"></div><p>Connexion à la partie…</p></div>');
+  Net.watchGame(onRemote, netError);
+  Net.presence(myUid, myName);
+  Net.watchPresence(pr => { PRESENCE = pr || {}; if (G && ONLINE) renderPlayers(); });
+}
+
+/* --- Firebase (SDK chargé depuis le CDN de Google) --- */
+async function FireNet(config) {
+  const V = '10.12.2', B = `https://www.gstatic.com/firebasejs/${V}/`;
+  const [A, D] = await Promise.all([import(B + 'firebase-app.js'), import(B + 'firebase-database.js')]);
+  const app = A.initializeApp(config), db = D.getDatabase(app);
+  let base = null;
+  const r = path => D.ref(db, base + path);
+  return {
+    connect(room) { base = 'rooms/' + room + '/'; },
+    watchGame(cb, err) { D.onValue(r('game'), s => cb(s.val()), err); },
+    async tx(fn) {
+      let aborted = false;
+      const res = await D.runTransaction(r('game'), cur => { const v = fn(cur); if (v === undefined) aborted = true; return v; }, { applyLocally: false });
+      return res.committed && !aborted;
+    },
+    presence(uid, name) {
+      const me = r('presence/' + uid);
+      D.onValue(D.ref(db, '.info/connected'), s => { if (s.val()) { D.onDisconnect(me).remove(); D.set(me, { name, t: Date.now() }); } });
+    },
+    watchPresence(cb) { D.onValue(r('presence'), s => cb(s.val() || {}), () => {}); }
+  };
+}
+/* --- serveur factice pour les tests locaux (?mock=nom) --- */
+function MockNet(uid) {
+  const KEY = 'triomock', bc = new BroadcastChannel(KEY), cbs = [], pcbs = [];
+  let room = '';
+  const all = () => JSON.parse(localStorage.getItem(KEY) || '{}');
+  const read = () => all()[room] || {};
+  const emit = () => { const d = read(); cbs.forEach(cb => cb(d.game || null)); pcbs.forEach(cb => cb(d.presence || {})); };
+  const writeRoom = d => { const a = all(); a[room] = d; localStorage.setItem(KEY, JSON.stringify(a)); bc.postMessage(1); setTimeout(emit, 5); };
+  bc.onmessage = emit;
+  return {
+    connect(r) { room = r; },
+    watchGame(cb, err) { const ok = localStorage.getItem(KEY + '_allow'); if (ok && ok !== room) return setTimeout(() => err({ code: 'PERMISSION_DENIED' }), 40); cbs.push(cb); setTimeout(() => cb(read().game || null), 40); },
+    async tx(fn) { await new Promise(r => setTimeout(r, 25)); const d = read(), nv = fn(d.game || null); if (nv === undefined) return false; d.game = nv; writeRoom(d); return true; },
+    presence(id, name) { const d = read(); d.presence = d.presence || {}; d.presence[id] = { name }; writeRoom(d);
+      addEventListener('beforeunload', () => { const d = read(); if (d.presence) delete d.presence[id]; writeRoom(d); }); },
+    watchPresence(cb) { pcbs.push(cb); setTimeout(() => cb(read().presence || {}), 40); }
+  };
+}
+async function boot() {
+  applyView(false);
+  const mock = new URLSearchParams(location.search).get('mock');
+  const conf = window.FIREBASE_CONFIG;
+  try {
+    if (mock) { SK = 'trio_' + mock + '_'; Net = MockNet(mock); window.__dbg = { G: () => G, finish: wi => finishGame(wi) }; }
+    else if (conf && conf.apiKey && !/COLLEZ|VOTRE/i.test(conf.apiKey)) Net = await FireNet(conf);
+  } catch (e) { Net = null; console.error(e); }
+  if (!Net) { TRAINING = true; return showSetup(); } // pas de configuration : jeu contre l'ordinateur
+  if (lsGet('room') && lsGet('name')) enterRoom(); else showLogin();
+}
+boot();
+})();
+</script>
+</body>
+</html>
