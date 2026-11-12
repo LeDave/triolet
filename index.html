@@ -4,12 +4,20 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Triominos</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0e3226">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Triominos">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Rubik:wght@600;700&display=swap" rel="stylesheet">
 <style>
 :root{--gold:#f2c14e;--ink:#f6f1e3;--panel:rgba(8,28,22,.82);--wood1:#4a321d;--wood2:#2e1f11}
 *{box-sizing:border-box}
-html,body{margin:0;height:100%;height:100dvh;background:#0b1f19;color:var(--ink);font-family:'Fredoka',system-ui,sans-serif;overflow:hidden;-webkit-user-select:none;user-select:none}
+html,body{margin:0;height:100%;height:100dvh;overscroll-behavior:none;background:#0b1f19;color:var(--ink);font-family:'Fredoka',system-ui,sans-serif;overflow:hidden;-webkit-user-select:none;user-select:none}
 body{display:flex;flex-direction:column}
 .btn{font-family:inherit;font-size:15px;font-weight:600;border:0;border-radius:10px;padding:9px 14px;cursor:pointer;background:#2b4a3f;color:var(--ink);transition:transform .1s,background .15s,opacity .15s;white-space:nowrap}
 .btn:hover:not(:disabled){background:#356053}
@@ -772,12 +780,14 @@ function showMenu() {
       <button class="btn" id="mmBonus">✨ Les bonus de la partie</button>
       <button class="btn" id="mmRules">📖 Règles complètes</button>
       <button class="btn" id="mmNew">＋ Nouvelle partie</button>
+      ${isStandalone() ? '' : '<button class="btn" id="mmInstall">📲 Installer l’application</button>'}
     </div>
       ${ONLINE || (TRAINING && Net) ? `<button class="btn" id="mmOnline">${TRAINING ? '🌐 Revenir au jeu en ligne' : '🔑 Changer de prénom ou de mot de passe'}</button>` : ''}
     ${G.log.length ? `<h3>Derniers coups</h3><div class="histo">${G.log.slice(-8).reverse().map(x => `<div>${x.t}</div>`).join('')}</div>` : ''}`);
   $('mX').onclick = hideModal;
   $('mmHelp').onclick = showHelp; $('mmBonus').onclick = showBonus;
   $('mmRules').onclick = () => showRules(showMenu); $('mmNew').onclick = () => (ONLINE && !G.over) ? confirmAbandon() : showSetup();
+  if ($('mmInstall')) $('mmInstall').onclick = installApp;
   if ($('mmOnline')) $('mmOnline').onclick = () => TRAINING ? leaveTraining() : (hideModal(), logout());
 }
 function bombAt(k) {
@@ -1397,9 +1407,9 @@ function leaveTraining() {
   if (lastRemote !== undefined) applyRemote(lastRemote); else showLobby();
 }
 function lobbyFoot() {
-  return `<div class="mfoot" style="justify-content:center;flex-wrap:wrap"><button class="btn ghostbtn small" id="lTrain">🤖 S’entraîner contre l’ordinateur</button><button class="btn ghostbtn small" id="lOut">🔑 Changer de mot de passe</button></div>`;
+  return `<div class="mfoot" style="justify-content:center;flex-wrap:wrap">${isStandalone() ? '' : '<button class="btn ghostbtn small" id="lInst">📲 Installer</button>'}<button class="btn ghostbtn small" id="lTrain">🤖 S’entraîner contre l’ordinateur</button><button class="btn ghostbtn small" id="lOut">🔑 Changer de mot de passe</button></div>`;
 }
-function bindLobbyFoot() { $('lTrain').onclick = startTraining; $('lOut').onclick = logout; }
+function bindLobbyFoot() { $('lTrain').onclick = startTraining; $('lOut').onclick = logout; if ($('lInst')) $('lInst').onclick = installApp; }
 function showLobby() {
   showModal(`<div class="lobby"><div class="big">🎲</div><h2>Bonjour ${myName} !</h2>
     <p>Aucune partie en cours.</p><p style="font-size:13px;opacity:.7">Votre ami doit utiliser le même mot de passe pour voir votre partie.</p>
@@ -1528,8 +1538,27 @@ function MockNet(uid) {
     watchPresence(cb) { pcbs.push(cb); setTimeout(() => cb(read().presence || {}), 40); }
   };
 }
+/* --- application installable (PWA) --- */
+let installEvt = null;
+const isStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; });
+addEventListener('appinstalled', () => { installEvt = null; toast('📲 Triominos est installé !'); });
+function installApp() {
+  if (installEvt) { installEvt.prompt(); installEvt.userChoice.finally(() => { installEvt = null; }); return; }
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  showModal(`<button class="mclose" id="mX">✕</button><h2>📲 Installer Triominos</h2>
+    ${ios ? '<p>Dans Safari : touchez le bouton <b>Partager</b> (carré avec une flèche), puis <b>Sur l’écran d’accueil</b>.</p>'
+          : '<p>Dans Chrome : menu <b>⋮</b> en haut à droite, puis <b>Installer l’application</b> (ou <b>Ajouter à l’écran d’accueil</b>).</p>'}
+    <p style="opacity:.75;font-size:13.5px">Le jeu s’ouvrira ensuite en plein écran, comme une vraie application.</p>`);
+  $('mX').onclick = hideModal;
+}
+function registerSW() {
+  if (!('serviceWorker' in navigator) || !/^https:|^http:\/\/localhost/.test(location.href)) return;
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
 async function boot() {
   applyView(false);
+  registerSW();
   const mock = new URLSearchParams(location.search).get('mock');
   const conf = window.FIREBASE_CONFIG;
   // diagnostic affiché si le mode en ligne ne peut pas démarrer
@@ -1538,6 +1567,7 @@ async function boot() {
     else if (conf === null) CONF_ERR = 'Le fichier <b>config.js</b> est introuvable : il doit être à côté de index.html, avec exactement ce nom.';
     else if (!conf.apiKey || /COLLEZ|VOTRE/i.test(conf.apiKey)) CONF_ERR = '<b>config.js</b> contient encore les valeurs d’exemple : collez celles de votre projet Firebase.';
     else if (!conf.databaseURL || /votre-projet/i.test(conf.databaseURL)) CONF_ERR = 'Il manque <b>databaseURL</b> (ou c’est l’exemple) dans config.js.';
+    else if (navigator.onLine === false) CONF_ERR = '📡 Pas de connexion internet : vous pouvez jouer contre l’ordinateur en attendant.';
   }
   try {
     if (mock) { SK = 'trio_' + mock + '_'; Net = MockNet(mock); window.__dbg = { G: () => G, finish: wi => finishGame(wi) }; }
