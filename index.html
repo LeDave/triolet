@@ -1172,6 +1172,7 @@ function showSetup() {
       ${triSVG([[108, 4], [142, 64], [74, 64]], [3, 5, 1], { fs: 15 })}
     </svg></div>
     <h2 style="text-align:center">Triominos</h2>
+    ${!Net && CONF_ERR ? `<div class="rule" style="border-color:#f87171;background:rgba(248,113,113,.12)">⚠️ <b>Mode en ligne désactivé.</b> ${CONF_ERR}</div>` : ''}
     <p style="text-align:center;opacity:.75;margin-top:0">${onl ? (friend ? `Nouvelle partie en ligne contre <b>${friend.name}</b>` : 'Nouvelle partie en ligne : votre ami pourra la rejoindre') : 'Posez vos triangles en faisant correspondre les nombres aux coins.'}</p>
     ${onl ? '' : `<h3>Adversaires</h3>${optGroup('opp', [[1, '1 ordinateur'], [2, '2 ordinateurs'], [3, '3 ordinateurs']], cfg.opp)}
     <h3>Niveau</h3>${optGroup('level', [['easy', 'Facile'], ['expert', 'Expert']], cfg.level)}`}
@@ -1274,7 +1275,7 @@ function showRules(back) {
 window.addEventListener('resize', () => { if (G) ensureVisible(0, 0); });
 
 /* ================= Jeu en ligne (Firebase) ================= */
-let Net = null, TRAINING = false, myUid = null, myName = '';
+let Net = null, TRAINING = false, myUid = null, myName = '', CONF_ERR = '';
 let gameVer = 0, lastSynced = '', inflight = false, again = false, lastRemote = null, firstLoad = true;
 let seenLog = 0, seenBn = 0, seenPop = 0, PRESENCE = {}, LOCAL = {}, lastSeats = null;
 const tileKey = t => t[0] + '' + t[1] + t[2];
@@ -1531,10 +1532,17 @@ async function boot() {
   applyView(false);
   const mock = new URLSearchParams(location.search).get('mock');
   const conf = window.FIREBASE_CONFIG;
+  // diagnostic affiché si le mode en ligne ne peut pas démarrer
+  if (!mock) {
+    if (conf === undefined) CONF_ERR = 'Le fichier <b>config.js</b> a été trouvé mais contient une erreur, ou ne définit pas <code>window.FIREBASE_CONFIG</code>.';
+    else if (conf === null) CONF_ERR = 'Le fichier <b>config.js</b> est introuvable : il doit être à côté de index.html, avec exactement ce nom.';
+    else if (!conf.apiKey || /COLLEZ|VOTRE/i.test(conf.apiKey)) CONF_ERR = '<b>config.js</b> contient encore les valeurs d’exemple : collez celles de votre projet Firebase.';
+    else if (!conf.databaseURL || /votre-projet/i.test(conf.databaseURL)) CONF_ERR = 'Il manque <b>databaseURL</b> (ou c’est l’exemple) dans config.js.';
+  }
   try {
     if (mock) { SK = 'trio_' + mock + '_'; Net = MockNet(mock); window.__dbg = { G: () => G, finish: wi => finishGame(wi) }; }
-    else if (conf && conf.apiKey && !/COLLEZ|VOTRE/i.test(conf.apiKey)) Net = await FireNet(conf);
-  } catch (e) { Net = null; console.error(e); }
+    else if (!CONF_ERR) Net = await FireNet(conf);
+  } catch (e) { Net = null; console.error(e); CONF_ERR = 'Firebase n’a pas pu démarrer : ' + String(e && e.message || e).replace(/</g, '&lt;'); }
   if (!Net) { TRAINING = true; return showSetup(); } // pas de configuration : jeu contre l'ordinateur
   if (lsGet('room') && lsGet('name')) enterRoom(); else showLogin();
 }
