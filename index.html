@@ -84,8 +84,12 @@ svg text{font-family:'Fredoka',system-ui,sans-serif;font-weight:700;text-anchor:
 .think{display:inline-block;animation:blink 1s infinite}
 @keyframes blink{50%{opacity:.3}}
 .badge2{background:var(--gold);color:#2a1d07;border-radius:6px;padding:0 5px;font-size:11px;font-weight:700;margin-left:3px}
-.spyhand{display:flex;flex-wrap:wrap;gap:3px;max-width:200px}
-.spyhand span{background:#fbf5e6;color:#141414;border-radius:4px;padding:0 4px;font-size:11px;font-weight:500}
+.spyhand{display:flex;flex-wrap:wrap;gap:2px;max-width:280px;padding:2px 0}
+.spyhand svg{width:36px;height:auto;display:block;filter:drop-shadow(0 1px 1px rgba(0,0,0,.4))}
+.spyhand svg.bkt .body{fill:#efe6ff;stroke:#efe6ff}
+.spyhand svg.bkt .hlp{stroke:#7c3aed;stroke-width:10}
+@media (max-width:720px){ .spyhand{max-width:230px} .spyhand svg{width:36px} }
+.spyhand svg{width:40px}
 
 /* ---- message et notifications ---- */
 #pill{max-width:560px;background:rgba(8,28,22,.82);backdrop-filter:blur(6px);border-radius:14px;padding:6px 14px;font-size:14px;line-height:1.3;text-align:center;pointer-events:none;z-index:4}
@@ -112,7 +116,7 @@ footer{flex:0 0 auto;display:flex;align-items:center;gap:10px;background:linear-
 .meScore{width:54px;height:54px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#7ee08a,#2f9b48);border:3px solid #fff7df;display:flex;align-items:center;justify-content:center;font-size:21px;font-weight:700;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.45);box-shadow:0 2px 6px rgba(0,0,0,.3);transition:box-shadow .2s}
 #me.active .meScore{box-shadow:0 0 0 4px rgba(255,255,255,.55),0 2px 6px rgba(0,0,0,.3)}
 .meName{font-size:11.5px;font-weight:600;color:#3a2604;display:flex;gap:2px;align-items:center}
-#hand{flex:1;display:flex;flex-wrap:wrap;gap:3px 2px;align-content:flex-start;padding:2px;min-height:52px;max-height:34vh;overflow-y:auto;scrollbar-width:thin}
+#hand{flex:1;display:flex;flex-wrap:wrap;gap:3px 2px;align-content:flex-start;padding:5px 2px 2px 4px;min-height:52px;max-height:34vh;overflow-y:auto;scrollbar-width:thin}
 .htile{touch-action:none;-webkit-touch-callout:none;display:block;flex:0 0 auto;background:none;border:0;padding:0;cursor:grab;transition:opacity .15s;filter:drop-shadow(0 2px 2px rgba(80,50,0,.45))}
 .htile svg{display:block;width:70px;height:auto}
 .htile.dragging{opacity:.25}
@@ -127,8 +131,9 @@ body.dragmode,body.dragmode *{cursor:grabbing!important}
 @keyframes drawnA{from{transform:translateY(-60px) scale(.6);opacity:0}to{transform:none;opacity:1}}
 .hslot.fav+.hslot:not(.fav){margin-left:5px;padding-left:6px;border-left:2px dotted rgba(58,38,4,.35)}
 .hslot.fav .body{fill:#fff1c2;stroke:#fff1c2}
-.hslot.bkt .body{fill:#ffe39a;stroke:#ffe39a}
-.hslot.bkt{margin-right:6px}
+.hslot.bkt .body,#dragTile.bkt .body{fill:#efe6ff;stroke:#efe6ff}
+.hslot.bkt .hlp,#dragTile.bkt .hlp{stroke:#7c3aed;stroke-width:10}
+.tbk{opacity:1}
 .hbk{position:absolute;top:-4px;right:-4px;width:22px;height:22px;border-radius:50%;background:#f2c14e;border:1.5px solid #8a5a00;font-size:12px;line-height:19px;text-align:center;pointer-events:none;z-index:2;box-shadow:0 1px 3px rgba(0,0,0,.35)}
 .hbtn{position:absolute;top:-2px;left:-3px;width:20px;height:20px;border-radius:50%;border:0;background:rgba(58,38,4,.35);color:#fff;font-size:11px;cursor:pointer;padding:0;line-height:20px;font-family:inherit;z-index:2}
 .hbtn:not(.on){opacity:.5}
@@ -167,6 +172,28 @@ table.res tr.win td{color:var(--gold)}
 .helptbl td{padding:5px 4px;border-bottom:1px solid rgba(255,255,255,.07);vertical-align:top}
 .helptbl td.n{text-align:right;font-weight:700;color:var(--gold);white-space:nowrap}
 .lobby{text-align:center}
+.stealBar{display:flex;gap:8px;background:rgba(8,28,22,.9);backdrop-filter:blur(6px);border:2px solid var(--gold);border-radius:16px;padding:8px;box-shadow:0 8px 24px rgba(0,0,0,.45);animation:stealIn .3s ease}
+@keyframes stealIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.stealBar .stealT{padding:6px 6px 4px;border-radius:12px}
+.stealBar .stealT svg{width:62px}
+.stealT{background:rgba(255,255,255,.06);border:2px solid rgba(255,255,255,.15);border-radius:14px;padding:10px 8px 6px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--ink);font-family:inherit;transition:transform .12s,border-color .12s}
+.stealT:hover{transform:translateY(-3px);border-color:var(--gold)}
+.stealT svg{width:78px;height:auto;filter:drop-shadow(0 2px 2px rgba(0,0,0,.4))}
+.stealT small{font-size:11.5px;opacity:.85}
+.stealT.bkt .body{fill:#efe6ff;stroke:#efe6ff}
+.stealT.bkt .hlp{stroke:#7c3aed;stroke-width:10}
+#evCard{position:absolute;left:50%;bottom:92px;transform:translateX(-50%);width:min(340px,calc(100% - 40px));background:#12352a;border:2px solid var(--gold);border-radius:18px;padding:16px 18px 14px;box-shadow:0 18px 50px rgba(0,0,0,.55);z-index:20;text-align:center;cursor:pointer;animation:evCardIn .35s cubic-bezier(.3,1.4,.5,1)}
+@keyframes evCardIn{from{opacity:0;transform:translateX(-50%) translateY(24px) scale(.92)}to{opacity:1;transform:translateX(-50%)}}
+#evCard[hidden]{display:none}
+@keyframes evIn{from{opacity:0;transform:translate(-50%,-50%) scale(.8)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
+#evCard .eic{font-size:44px;line-height:1.1}
+#evCard .eti{font-size:18px;font-weight:700;margin:4px 0 6px}
+#evCard .etx{font-size:14.5px;line-height:1.4;opacity:.92}
+#evCard .etx b{color:var(--gold)}
+#evCard .eok{margin-top:12px;font-size:12.5px;opacity:.6}
+#evCard .ebar{height:3px;background:var(--gold);border-radius:2px;margin-top:10px;transform-origin:left;animation:undoT 15s linear forwards}
+.opow{display:flex;gap:2px;font-size:12px;margin-top:1px}
+.opow span{background:rgba(242,193,78,.18);border-radius:5px;padding:0 3px}
 .inp{display:block;width:100%;margin-top:4px;padding:11px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(0,0,0,.25);color:var(--ink);font-family:inherit;font-size:16px}
 .lobby .big{font-size:44px;margin:4px 0}
 .lobby p{margin:6px 0}
@@ -251,6 +278,7 @@ table.res tr.win td{color:var(--gold)}
   <div id="top"><div id="opps"></div><div id="pill"></div><div id="toasts"></div></div>
   <button class="fab sm" id="fitBtn" title="Recentrer le plateau" aria-label="Recentrer">◎</button>
   <div id="banner"></div>
+  <div id="evCard" hidden></div>
   <div id="sideL">
     <button class="fab" id="bonusBtn" aria-label="Bonus"><span>✨</span><i class="badge" id="bonusBadge"></i><span class="cap">Bonus</span></button>
   </div>
@@ -303,14 +331,14 @@ const POWERS = [
   { k: 'freeze', ic: '🔒', l: 'Gel de la pioche', tip: 'Le prochain adversaire ne pourra pas piocher : s’il ne peut rien poser, il doit passer (−10)' },
   { k: 'joker', ic: '🃏', l: 'Joker', tip: 'Un coin de votre prochaine tuile peut valoir n’importe quel nombre' },
   { k: 'undo', ic: '🔁', l: 'Reprise', tip: 'Reprendre la tuile que vous venez de poser et rejouer (vous perdez ses points)', fixed: true },
-  { k: 'steal', ic: '🎯', l: 'Vol', tip: 'Prendre une tuile au hasard chez un adversaire' },
+  { k: 'steal', ic: '🎯', l: 'Vol', tip: 'Trois tuiles de l’adversaire sont révélées au hasard : prenez celle de votre choix' },
   { k: 'bomb', ic: '💣', l: 'Bombe', tip: 'Retirer une tuile en bordure du plateau ; son poseur perd ses points' },
   { k: 'rafale', ic: '⚡', l: 'Rafale', tip: 'Poser deux tuiles dans le même tour' },
   { k: 'chest', ic: '🎲', l: 'Coffre surprise', tip: 'Compléter un hexagone fait gagner un bonus au hasard', passive: true }
 ];
 const PW = Object.fromEntries(POWERS.map(x => [x.k, x]));
 const isOn = k => !!(PW[k] && (PW[k].fixed ? cfg.undos > 0 : cfg.bonus.includes(k)));
-let cfg = { opp: 1, level: 'expert', dist: 'tiles', btiles: 8, uses: 1, hints: 2, undos: 1, bonus: ['swap', 'double', 'freeze'] };
+let cfg = { opp: 1, level: 'expert', dist: 'tiles', btiles: 8, uses: 1, hints: 2, undos: 0, bonus: POWERS.filter(x => !x.fixed).map(x => x.k) };
 let G = null, sel = null, ghost = null, targetMap = new Map(), freshK = null, aiTimer = null;
 // ONLINE : partie en ligne ; ME : siège du joueur local (0 hors ligne)
 let ONLINE = false, ME = 0, SEATS = null;
@@ -385,7 +413,7 @@ function newGame(prevStarter) {
       score: 0, hand: [], color: PCOL[i], powers, hints: cfg.hints });
   }
   G.nextStarter = prevStarter == null ? null : (prevStarter + 1) % G.players.length;
-  shownEnd = null;
+  shownEnd = null; EVQ.length = 0; if (evShown) nextEv(); recapFrom = 0;
   newRound();
 }
 function newRound() {
@@ -444,14 +472,16 @@ function placeMove(pi, ti, m) {
   if (placedTile.bk) {
     const w = PW[placedTile.bk]; snap.bk = placedTile.bk; placedTile.bk = null;
     p.powers[w.k] = (p.powers[w.k] || 0) + 1;
-    addLog(`✨ ${p.name} ${vous(p) ? 'gagnez' : 'gagne'} le bonus ${w.ic} ${w.l}`);
-    setTimeout(() => banner(`✨ ${w.ic} ${w.l} ${vous(p) ? 'gagné' : 'pour ' + p.name} !`), m.bonus || mult === 2 ? 1400 : 300);
+    pevent(pi, 'gain', w.k, { via: 'tile' });
+    addLog(vous(p) ? `✨ Vous posez une tuile bonus et gagnez ${w.ic} ${w.l}` : `✨ ${p.name} pose une tuile bonus et gagne ${w.ic} ${w.l}`);
+    setTimeout(() => banner(vous(p) ? `✨ Vous gagnez ${w.ic} ${w.l} !` : `✨ ${p.name} gagne ${w.ic} ${w.l}`), m.bonus || mult === 2 ? 1400 : 300);
   }
   if (G.chest && /exagone/.test(m.label)) {
     const pool = POWERS.filter(x => !x.passive && !x.fixed && cfg.bonus.includes(x.k));
     if (pool.length) {
       const w = pool[Math.random() * pool.length | 0];
       p.powers[w.k] = (p.powers[w.k] || 0) + 1; snap.chest = w.k;
+      pevent(pi, 'gain', w.k, { via: 'chest' });
       addLog(`🎲 Coffre surprise : ${p.name} ${vous(p) ? 'gagnez' : 'gagne'} ${w.ic} ${w.l}`);
       setTimeout(() => banner(`🎲 ${w.ic} ${w.l} pour ${p.name} !`), 1300);
     }
@@ -470,12 +500,15 @@ function placeMove(pi, ti, m) {
   nextTurn(snap.k ? snap : null);
 }
 function nextTurn(undoSnap) {
+  if (G.current === ME) recapFrom = G.logId || 0; // vos propres coups ne sont pas récapitulés
   G.current = (G.current + 1) % G.players.length;
   G.drawFrozen = false;
   if (G.freezeNext) {
     G.freezeNext = false; G.drawFrozen = true;
     const f = cur();
-    addLog(`🔒 ${vous(f) ? 'Votre pioche est gelée' : 'Pioche gelée pour ' + f.name} ce tour`); banner(`🔒 Pioche gelée${vous(f) ? '' : ' : ' + f.name}`);
+    const by = G.players[G.freezeBy] ? G.players[G.freezeBy].name : 'Un adversaire';
+    addLog(vous(f) ? `🔒 ${by} a gelé votre pioche : pas de pioche ce tour` : `🔒 ${by} a gelé la pioche de ${f.name} ce tour`);
+    banner(vous(f) ? `🔒 ${by} a gelé votre pioche` : `🔒 Pioche de ${f.name} gelée`);
   }
   G.extra = false; G.aiPowerUsed = false;
   G.draws = 0; G.msg = ''; G.mode = null; G.spy = 0; sel = null; ghost = null; targetMap = new Map();
@@ -491,6 +524,7 @@ function doUndo() {
   me.score -= u.pts;
   u.tile.rot = u.tile.rot || 0; me.hand.push(u.tile);
   me.powers.undo--;
+  pevent(u.seat, 'use', 'undo', { t: u.tile.join('-'), pts: u.pts });
   if (u.mult === 2) me.doubleArmed = true;
   if (u.jk >= 0) me.jokerArmed = true;
   if (u.chest && me.powers[u.chest] > 0) me.powers[u.chest]--;
@@ -523,12 +557,14 @@ function passTurn() {
 }
 function aiTurn() {
   if (!G || G.over) return;
+  if (evBusy()) { aiTimer = setTimeout(aiTurn, 400); return; } // laisse le temps de lire la carte
   if (G.undoSnap) { G.undoSnap = null; render(); }
   const p = cur(), ms = allMoves(p.hand);
   const nextP = G.players[(G.current + 1) % G.players.length];
   // Gel de la pioche : l'IA le lance quand l'adversaire a peu de tuiles (il risque d'être bloqué)
   if (!G.aiPowerUsed && p.powers.freeze && !G.freezeNext && G.pool.length && nextP.hand.length <= 4 && Math.random() < .6) {
-    G.aiPowerUsed = true; p.powers.freeze--; G.freezeNext = true;
+    G.aiPowerUsed = true; p.powers.freeze--; G.freezeNext = true; G.freezeBy = G.current;
+    pevent(G.current, 'use', 'freeze', { target: (G.current + 1) % G.players.length });
     addLog(`🔒 ${p.name} gèle ${vous(nextP) ? 'votre pioche' : 'la pioche de ' + nextP.name} pour le prochain tour`); banner(`🔒 ${p.name} gèle ${vous(nextP) ? 'votre' : 'la'} pioche !`); render();
     aiTimer = setTimeout(aiTurn, 900); return;
   }
@@ -550,8 +586,10 @@ function aiTurn() {
     // Double : l'IA l'active sur un gros coup
     if (!G.aiPowerUsed && p.powers.double && !p.doubleArmed && (m.pts >= 40 || (m.pts >= 13 && Math.random() < .35))) {
       G.aiPowerUsed = true; p.powers.double--; p.doubleArmed = true;
+      pevent(G.current, 'use', 'double');
       addLog(`${p.name} active ✖2 Double !`); banner(`${p.name} : ✖2 Double !`); render();
-      aiTimer = setTimeout(() => placeMove(G.current, m.ti, m), 900); return;
+      const go = () => evBusy() ? (aiTimer = setTimeout(go, 400)) : placeMove(G.current, m.ti, m);
+      aiTimer = setTimeout(go, 900); return;
     }
     placeMove(G.current, m.ti, m);
     return;
@@ -651,7 +689,7 @@ function selectTile(i) {
   G.msg = '';
   sel = sel === i ? null : i; ghost = null; computeTargets(); render();
 }
-let spinI = null, drawnT = null;
+let spinI = null, drawnT = null, stealPick = null;
 function rotateHand(i) {
   const t = meP().hand[i]; if (!t) return;
   t.rot = ((t.rot || 0) + 2) % 3; spinI = i; keepLocal(t);
@@ -684,6 +722,7 @@ function giveTile(from, ti, to) {
   t.rot = 0; t.fav = false; keepLocal(t);
   to.hand.push(t); if (to.human) sortHand(to.hand);
   from.powers.gift--;
+  pevent(G.players.indexOf(from), 'use', 'gift', { to: G.players.indexOf(to), t: t.join('-') });
   const txt = vous(from) ? `Vous offrez ${t.join('-')} à ${to.name}` : `${from.name} ${vous(to) ? 'vous offre' : 'offre à ' + to.name} ${t.join('-')}`;
   addLog('🎁 ' + txt); banner('🎁 ' + txt);
   sel = null; ghost = null; targetMap = new Map(); G.mode = null;
@@ -743,16 +782,28 @@ function usePower(kind) {
   G.mode = null; G.undoSnap = null;
   if (kind === 'steal') {
     chooseOpponent('🎯 Vol', me, q => {
-      const t = q.hand.splice(Math.random() * q.hand.length | 0, 1)[0];
-      t.rot = 0; t.fav = false; keepLocal(t); me.hand.push(t); me.powers.steal--;
-      addLog(`🎯 ${me.name} vole une tuile à ${q.name}`, `🎯 Vous volez ${t.join('-')} à ${q.name}`); banner(`🎯 Volé : ${t.join('-')}`, true); render();
+      // 3 tuiles de l'adversaire révélées au hasard : on choisit celle qu'on prend (pas d'annulation après avoir vu)
+      const picks = shuffle(q.hand.slice()).slice(0, 3);
+      me.powers.steal--;
+      const take = t => {
+        stealPick = null; G.mode = null;
+        const i = q.hand.indexOf(t); if (i < 0) return;
+        q.hand.splice(i, 1);
+        t.rot = 0; t.fav = false; keepLocal(t); me.hand.push(t); drawnT = t;
+        pevent(G.current, 'use', 'steal', { from: G.players.indexOf(q), t: t.join('-') });
+        addLog(`🎯 ${me.name} vole la tuile ${t.join('-')} à ${q.name}`, `🎯 Vous volez ${t.join('-')} à ${q.name}`); banner(`🎯 Volé : ${t.join('-')}`, true); render();
+      };
+      // les 3 tuiles s'affichent dans un bandeau : le plateau reste visible (déplacer / zoomer pour juger)
+      stealPick = { q, picks, take }; G.mode = 'steal';
+      render();
     });
     return;
   }
   me.powers[kind]--;
+  pevent(G.current, 'use', kind, kind === 'freeze' ? { target: (G.current + 1) % G.players.length } : {});
   if (kind === 'double') { me.doubleArmed = true; addLog(vous(me) ? '✖2 Double activé : votre prochaine tuile compte double' : `✖2 ${me.name} active Double`); banner(vous(me) ? '✖2 Double activé !' : `✖2 Double pour ${me.name} !`); }
   if (kind === 'spy') { G.spy = G.current + 1; addLog(vous(me) ? '👀 Vous espionnez les mains adverses' : `👀 ${me.name} espionne vos tuiles`); }
-  if (kind === 'freeze') { G.freezeNext = true; const n = G.players[(G.current + 1) % G.players.length]; addLog(`🔒 ${n.name} ne pourra pas piocher au prochain tour`); banner(`🔒 Pioche de ${n.name} gelée !`); }
+  if (kind === 'freeze') { G.freezeNext = true; G.freezeBy = G.current; const n = G.players[(G.current + 1) % G.players.length]; addLog(`🔒 ${n.name} ne pourra pas piocher au prochain tour`); banner(`🔒 Pioche de ${n.name} gelée !`); }
   if (kind === 'joker') { me.jokerArmed = true; addLog(vous(me) ? '🃏 Joker activé : un coin de votre prochaine tuile vaut n’importe quel nombre' : `🃏 ${me.name} active un Joker`); banner('🃏 Joker activé !'); }
   if (kind === 'rafale') { me.rafaleArmed = true; addLog(vous(me) ? '⚡ Rafale activée : vous poserez deux tuiles ce tour' : `⚡ ${me.name} active Rafale : deux tuiles ce tour`); banner('⚡ Rafale activée !'); }
   render();
@@ -765,7 +816,7 @@ const WHEN = {
   freeze: 'Pendant votre tour. À son prochain tour, l’adversaire suivant ne pourra pas piocher.',
   joker: 'Avant de poser. Reste actif jusqu’à ce qu’un coin en ait besoin.',
   undo: 'Juste après avoir posé : un bouton « Reprendre » apparaît tant que l’adversaire n’a pas joué.',
-  steal: 'Pendant votre tour, avant de poser.',
+  steal: 'Pendant votre tour, avant de poser. Une fois les 3 tuiles révélées, vous devez en prendre une.',
   bomb: 'Pendant votre tour, avant de poser. Seules les tuiles en bordure peuvent sauter.',
   rafale: 'Avant de poser. Après votre 1ʳᵉ tuile, vous en posez une 2ᵉ (ou terminez).',
   chest: 'Automatique dès que vous complétez un hexagone.'
@@ -832,6 +883,7 @@ function bombAt(k) {
   const t = cell.tile; t.rot = 0; t.fav = false;
   G.pool.splice(Math.random() * (G.pool.length + 1) | 0, 0, t);
   me.powers.bomb--; G.mode = null;
+  pevent(G.current, 'use', 'bomb', { t: t.join('-'), owner: cell.owner, pts: cell.pts });
   addLog(`💣 Boum ! ${t.join('-')} explose : ${vous(owner) ? 'vous perdez' : owner.name + ' perd'} ${cell.pts} pts`);
   banner('💣 Boum ! −' + cell.pts);
   render();
@@ -858,6 +910,7 @@ function applyMode(i) {
     const nt = G.pool.splice(Math.random() * G.pool.length | 0, 1)[0];
     me.hand.push(nt); drawnT = nt;
     me.powers.swap--; G.mode = null;
+    pevent(G.current, 'use', 'swap');
     addLog(`🔄 ${me.name} échange une tuile`, `🔄 Vous échangez ${t.join('-')} contre ${nt.join('-')}`); banner('🔄 Échange : ' + nt.join('-'), true);
     render();
   }
@@ -898,6 +951,8 @@ function triSVG(pts, vals, o = {}) {
   const ins = (p, f) => [p[0] + (cx - p[0]) * f, p[1] + (cy - p[1]) * f];
   const body = P(pts.map(p => ins(p, .23)));
   let s = `<g class="${o.cls || ''}" ${o.attr || ''}><polygon class="hlp" points="${body}"/><polygon class="body" points="${body}"/><polygon class="bevel" points="${P(pts.map(p => ins(p, .3)))}"/>`;
+  // tuile bonus : grande icône du bonus en filigrane, derrière les chiffres
+  if (o.bk && PW[o.bk]) s += `<text class="tbk" x="${cx.toFixed(1)}" y="${(cy + o.fs * .08).toFixed(1)}" font-size="${(o.fs * (o.bk === 'double' ? .85 : 1.25)).toFixed(1)}"${o.bk === 'double' ? ' style="fill:#7c3aed;font-weight:700"' : ''}>${PW[o.bk].ic}</text>`;
   vals.forEach((v, i) => {
     const q = ins(pts[i], o.ni ?? .56), dx = pts[i][0] - cx, dy = pts[i][1] - cy, d = Math.hypot(dx, dy);
     const a = Math.atan2(-dx / d, dy / d) * 180 / Math.PI, x = q[0].toFixed(1), y = q[1].toFixed(1);
@@ -906,7 +961,7 @@ function triSVG(pts, vals, o = {}) {
       s += `<rect class="tbar" x="${(q[0] - bw / 2).toFixed(1)}" y="${(q[1] - bh / 2).toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" rx="${(bw / 2).toFixed(1)}" transform="rotate(${a.toFixed(0)} ${x} ${y})"${o.jk === i ? ' style="fill:#c2410c"' : ''}/>`;
     } else s += `<text class="tnum" x="${x}" y="${y}" font-size="${o.fs}" transform="rotate(${a.toFixed(0)} ${x} ${y})"${o.jk === i ? ' style="fill:#c2410c" text-decoration="underline"' : ''}>${v}</text>`;
   });
-  if (o.bk && PW[o.bk]) s += `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${(o.fs * .62).toFixed(1)}" fill="#f2c14e" stroke="#b8860b" stroke-width="1"/><text x="${cx.toFixed(1)}" y="${(cy + o.fs * .03).toFixed(1)}" font-size="${(o.fs * .7).toFixed(1)}">${PW[o.bk].ic}</text>`;
+  if (o.bk && PW[o.bk]) { /* icône déjà dessinée en fond */ }
   else if (o.star) {
     const R = o.fs * .42, r = R * .45, st = [];
     for (let j = 0; j < 10; j++) { const a = -Math.PI / 2 + j * Math.PI / 5, rr = j % 2 ? r : R; st.push([cx + rr * Math.cos(a), cy + rr * Math.sin(a)]); }
@@ -931,6 +986,11 @@ function renderBoard() {
     Lghost.innerHTML = triSVG(cellPts(m.c, m.r), m.vals, { fs: S * .245, jk: m.jk, cls: 'ghost' + (ghost.hint ? ' hint' : ''), attr: `data-k="${ghost.k}"` });
   } else Lghost.innerHTML = '';
 }
+// bonus en réserve (hors Reprise, commune à tous)
+function heldPowers(p) {
+  const h = POWERS.filter(x => !x.passive && !x.fixed && p.powers[x.k] > 0).map(x => `<span title="${x.l}">${x.ic}${p.powers[x.k] > 1 ? '×' + p.powers[x.k] : ''}</span>`);
+  return h.length ? `<div class="opow" title="Bonus en réserve">${h.join('')}</div>` : '';
+}
 function renderPlayers() {
   const nxt = G.players[(G.current + 1) % G.players.length];
   $('opps').innerHTML = G.players.filter((p, i) => i !== ME).map(p => {
@@ -939,8 +999,8 @@ function renderPlayers() {
     const badges = `${p.doubleArmed ? '<span class="badge2">✖2</span>' : ''}${(G.freezeNext && nxt === p) || (G.drawFrozen && cur() === p) ? '<span class="badge2">🔒</span>' : ''}`;
     const online = ONLINE ? (PRESENCE[p.uid] ? '<span class="onl" title="En ligne"></span>' : '<span class="onl off" title="Hors ligne"></span>') : '';
     return `<div class="opp ${active ? 'active' : ''}"><div class="av" style="background:${p.color}">${p.name[0]}${online}</div>
-      <div class="oinfo"><span class="oname">${p.name}${badges}${active ? ' <span class="think">…</span>' : ''}</span><span class="oscore">${p.score}</span></div>
-      ${G.spy === ME + 1 ? `<div class="spyhand">${p.hand.map(t => `<span>${t.join('-')}</span>`).join('')}</div>` : `<div class="backs">${many ? `<i></i><small>${n}</small>` : `${'<i></i>'.repeat(shown)}<small>${n}</small>`}</div>`}</div>`;
+      <div class="oinfo"><span class="oname">${p.name}${badges}${active ? ' <span class="think">…</span>' : ''}</span><span class="oscore">${p.score}</span>${heldPowers(p)}</div>
+      ${G.spy === ME + 1 ? `<div class="spyhand" title="Tuiles de ${p.name} (Espion)">${p.hand.map(t => `<svg viewBox="0 0 74 70" class="${t.bk ? 'bkt' : ''}">${triSVG([[37, 4], [72, 66], [2, 66]], t, { fs: 18, ni: .56, bk: t.bk })}</svg>`).join('')}</div>` : `<div class="backs">${many ? `<i></i><small>${n}</small>` : `${'<i></i>'.repeat(shown)}<small>${n}</small>`}</div>`}</div>`;
   }).join('');
   const me = meP();
   $('meScore').textContent = me.score;
@@ -951,9 +1011,9 @@ function renderHand() {
   const me = meP(), my = humanTurn();
   const pts = [[37, 4], [72, 66], [2, 66]];
   $('hand').innerHTML = me.hand.map((t, i) =>
-    `<div class="hslot ${t.fav ? 'fav' : ''} ${t.bk ? 'bkt' : ''} ${t === drawnT ? 'drawn' : ''}"><button class="htile ${my ? '' : 'wait'} ${my && (G.mode === 'gift' || G.mode === 'swap') ? 'pick' : ''}" data-i="${i}" aria-label="Tuile ${t.join('-')} (toucher pour tourner)">
-      <svg viewBox="0 0 74 70"><g class="${spinI === i ? 'spin' : ''}">${triSVG(pts, hv(t), { fs: 18, ni: .56 })}</g></svg></button>
-      ${t.bk ? `<span class="hbk" title="Bonus ${PW[t.bk].l} : gagné en posant cette tuile">${PW[t.bk].ic}</span>` : ''}<button class="hbtn ${t.fav ? 'on' : ''}" data-a="fav" data-i="${i}" title="${t.fav ? 'Retirer le marque-page' : 'Marquer cette tuile'}">★</button></div>`).join('');
+    `<div class="hslot ${t.fav ? 'fav' : ''} ${t.bk ? 'bkt' : ''} ${t === drawnT ? 'drawn' : ''}"><button class="htile ${my ? '' : 'wait'} ${my && (G.mode === 'gift' || G.mode === 'swap') ? 'pick' : ''}" data-i="${i}" aria-label="Tuile ${t.join('-')} (toucher pour tourner)"${t.bk ? ` title="Tuile bonus : posez-la pour gagner ${PW[t.bk].ic} ${PW[t.bk].l}"` : ''}>
+      <svg viewBox="0 0 74 70"><g class="${spinI === i ? 'spin' : ''}">${triSVG(pts, hv(t), { fs: 18, ni: .56, bk: t.bk })}</g></svg></button>
+<button class="hbtn ${t.fav ? 'on' : ''}" data-a="fav" data-i="${i}" title="${t.fav ? 'Retirer le marque-page' : 'Marquer cette tuile'}">★</button></div>`).join('');
   spinI = null; drawnT = null;
 }
 function renderActions() {
@@ -978,6 +1038,9 @@ function renderActions() {
   if (myUndo) {
     A.innerHTML = `<button class="btn primary ${ONLINE ? '' : 'undoBtn'}" id="aUndo" style="--t:${UNDO_MS}ms">🔁 Reprendre ma tuile (−${G.undoSnap.pts})</button>`;
     $('aUndo').onclick = doUndo;
+  } else if (my && G.mode === 'steal' && stealPick) {
+    A.innerHTML = `<div class="stealBar">${stealPick.picks.map((t, j) => `<button class="stealT ${t.bk ? 'bkt' : ''}" data-j="${j}"><svg viewBox="0 0 74 70">${triSVG([[37, 4], [72, 66], [2, 66]], t, { fs: 18, ni: .56, bk: t.bk })}</svg>${t.bk ? `<small>${PW[t.bk].ic} ${PW[t.bk].l}</small>` : ''}</button>`).join('')}</div>`;
+    A.querySelectorAll('.stealT').forEach(b => b.onclick = () => stealPick.take(stealPick.picks[+b.dataset.j]));
   } else if (my && G.mode) {
     A.innerHTML = '<button class="btn" id="aCancelMode">✕ Annuler</button>';
     $('aCancelMode').onclick = () => { G.mode = null; G.msg = ''; render(); };
@@ -1001,6 +1064,7 @@ function renderActions() {
   if (G.over) st.textContent = 'Fin de la partie…';
   else if (myUndo) st.innerHTML = ONLINE ? `Vous pouvez <b>reprendre</b> votre tuile tant que ${cur().name} n’a pas joué` : 'Vous pouvez encore <b>reprendre</b> votre tuile…';
   else if (!my) st.innerHTML = `Au tour de <b>${cur().name}</b>${ONLINE && !PRESENCE[cur().uid] ? ' <small>(hors ligne)</small>' : ''}`;
+  else if (G.mode === 'steal' && stealPick) st.innerHTML = `🎯 Prenez une tuile de ${stealPick.q.name} · déplacez ou zoomez le plateau pour choisir`;
   else if (G.mode) st.innerHTML = G.msg || (G.mode === 'gift' ? '🎁 Touchez la tuile à <b>offrir</b>' : G.mode === 'swap' ? '🔄 Touchez la tuile à <b>échanger</b>' : '💣 Touchez une tuile en bordure (<b>contour rouge</b>)');
   else if (ghost) {
     const m = ghost.list[ghost.i];
@@ -1009,7 +1073,7 @@ function renderActions() {
   else if (G.msg) st.innerHTML = G.msg;
   else if (G.board.size === 0) st.innerHTML = '<b>À vous de commencer !</b> Posez la tuile de votre choix';
   else if (G.extra) st.innerHTML = '⚡ <b>Rafale :</b> posez une 2ᵉ tuile ou terminez';
-  else if (G.drawFrozen) st.innerHTML = '🔒 <b>Pioche gelée :</b> posez une tuile ou passez (−10)';
+  else if (G.drawFrozen) st.innerHTML = `🔒 <b>${G.players[G.freezeBy] ? G.players[G.freezeBy].name + ' a gelé votre pioche' : 'Pioche gelée'} :</b> posez une tuile ou passez (−10)`;
   else st.innerHTML = `<b>À vous !</b>${G.draws ? ` Pioches : ${G.draws}/3` : ''}`;
 }
 // pub : texte partagé (journal) ; priv : version privée affichée seulement au joueur concerné
@@ -1020,6 +1084,78 @@ function addLog(pub, priv) {
   seenLog = G.logId;
   toast(priv || pub);
 }
+// ---- cartes d'événement : explique clairement ce que fait un bonus adverse ----
+const EVQ = []; let evShown = null, evTimer = null, seenPev = 0;
+const evBusy = () => !!evShown || EVQ.length > 0;
+function pevent(seat, kind, k, d) {
+  if (!G) return;
+  G.pevId = (G.pevId || 0) + 1;
+  const e = { id: G.pevId, seat, kind, k, d: d || {} };
+  G.pev = (G.pev || []).concat(e).slice(-10); seenPev = G.pevId;
+  if (seat !== ME || kind === 'gain') announce(e); // vos propres gains sont aussi expliqués
+}
+function evText(e) {
+  if (e.kind === 'recap') return { ic: '📋', ti: e.d.title, tx: e.d.lines.map(l => `<div style="margin:3px 0">${l}</div>`).join('') };
+  const ps = G.players, who = ps[e.seat], n = who ? who.name : '?', d = e.d, w = PW[e.k] || { ic: '✨', l: 'Bonus' };
+  const nm = i => i === ME ? 'vous' : ps[i].name;
+  if (e.kind === 'gain' && e.seat === ME) return { ic: w.ic,
+    ti: `Vous gagnez ${w.l} !`,
+    tx: `${d.via === 'chest' ? 'En complétant un hexagone, vous ouvrez le coffre surprise' : 'En posant cette tuile ✨, vous gagnez un bonus'} : <b>${w.ic} ${w.l}</b>.<br>${w.tip}.<br><span style="opacity:.8">Pour l’utiliser : bouton <b>✨ Bonus</b> pendant votre tour, avant de poser.</span>` };
+  if (e.kind === 'gain') {
+    // ce que le bonus vous fera quand l'adversaire l'utilisera
+    const eff = {
+      gift: `${n} pourra vous donner une de ses tuiles (une tuile de plus pour vous).`,
+      swap: `${n} pourra remettre une de ses tuiles dans la pioche et en tirer une autre, sans pénalité.`,
+      double: `la tuile suivante de ${n} comptera <b>double</b>, bonus compris.`,
+      spy: `${n} pourra voir <b>toutes vos tuiles</b> pendant son tour.`,
+      freeze: `vous <b>ne pourrez pas piocher</b> à votre tour suivant.`,
+      joker: `un coin de la tuile suivante de ${n} pourra valoir n’importe quel nombre.`,
+      steal: `${n} pourra vous prendre une tuile, choisie parmi 3 tirées au hasard dans votre main.`,
+      bomb: `${n} pourra faire exploser une tuile en bordure du plateau ; celui qui l’a posée perdra ses points.`,
+      rafale: `${n} pourra poser <b>deux tuiles</b> dans le même tour.`
+    }[e.k] || w.tip;
+    return { ic: w.ic,
+      ti: d.via === 'chest' ? `${n} ouvre le coffre surprise` : `${n} a posé une tuile bonus`,
+      tx: `${d.via === 'chest' ? `En complétant un hexagone, ${n}` : `En posant cette tuile ✨, ${n}`} gagne <b>${w.ic} ${w.l}</b> et le garde en réserve (icône sous son score).<br>Quand ${n} l’utilisera : ${eff}` };
+  }
+  switch (e.k) {
+    case 'gift': return { ic: '🎁', ti: `${n} offre une tuile`, tx: d.to === ME ? `${n} vous donne la tuile <b>${d.t}</b> : elle s’ajoute à votre main (une tuile de plus à poser).` : `${n} donne la tuile <b>${d.t}</b> à ${nm(d.to)}.` };
+    case 'swap': return { ic: '🔄', ti: `${n} échange une tuile`, tx: `${n} remet une de ses tuiles dans la pioche et en tire une autre, sans pénalité.` };
+    case 'double': return { ic: '✖2', ti: `${n} active Double`, tx: `La <b>prochaine tuile</b> que ${n} posera comptera <b>double</b>, bonus compris.` };
+    case 'spy': return { ic: '👀', ti: `${n} vous espionne`, tx: `${n} voit <b>toutes vos tuiles</b> pendant ce tour.` };
+    case 'freeze': return { ic: '🔒', ti: `${n} gèle la pioche`, tx: d.target === ME ? `À votre prochain tour, vous <b>ne pourrez pas piocher</b>. Si aucune de vos tuiles ne se pose, vous devrez passer (−10).` : `${nm(d.target)} ne pourra pas piocher à son prochain tour.` };
+    case 'joker': return { ic: '🃏', ti: `${n} active un Joker`, tx: `Un coin de la prochaine tuile de ${n} pourra valoir <b>n’importe quel nombre</b>.` };
+    case 'steal': return { ic: '🎯', ti: `${n} vole une tuile`, tx: d.from === ME ? `${n} vous prend la tuile <b>${d.t}</b> : vous avez une tuile de moins.` : `${n} prend une tuile au hasard à ${nm(d.from)}.` };
+    case 'bomb': return { ic: '💣', ti: `${n} fait exploser une tuile`, tx: `La tuile <b>${d.t}</b> est retirée du plateau et retourne dans la pioche : ${d.owner === ME ? 'vous perdez' : nm(d.owner) + ' perd'} <b>${d.pts} points</b>.` };
+    case 'rafale': return { ic: '⚡', ti: `${n} active Rafale`, tx: `${n} va poser <b>deux tuiles</b> pendant ce tour.` };
+    case 'undo': return { ic: '🔁', ti: `${n} reprend sa tuile`, tx: `${n} retire la tuile <b>${d.t}</b> qu’il venait de poser (−${d.pts} pts) et rejoue son tour.` };
+  }
+  return { ic: w.ic, ti: `${n} utilise ${w.l}`, tx: w.tip + '.' };
+}
+function announce(e) { EVQ.push(e); if (!evShown) nextEv(); }
+// récapitulatif de ce que l'adversaire vient de faire, affiché quand c'est de nouveau votre tour
+let recapFrom = 0;
+function showRecap() {
+  if (!G || G.over) return;
+  const lines = G.log.filter(x => x.id > recapFrom).map(x => x.t);
+  recapFrom = G.logId || 0;
+  if (!lines.length) return;
+  const others = G.players.filter((p, i) => i !== ME).map(p => p.name).join(' et ');
+  announce({ kind: 'recap', dur: 8000, d: { title: `Ce qu’a fait ${others}`, lines } });
+}
+function nextEv() {
+  clearTimeout(evTimer);
+  const c = $('evCard'), e = EVQ.shift();
+  if (!e || !G) { evShown = null; c.hidden = true; return; }
+  evShown = e;
+  const t = evText(e);
+  c.innerHTML = `<div class="eic">${t.ic}</div><div class="eti">${t.ti}</div><div class="etx">${t.tx}</div><div class="ebar"></div><div class="eok">Touchez pour continuer</div>`;
+  c.hidden = false; c.style.animation = 'none'; void c.offsetWidth; c.style.animation = '';
+  const dur = e.dur || 15000;
+  c.querySelector('.ebar').style.animationDuration = dur + 'ms';
+  evTimer = setTimeout(nextEv, dur);
+}
+$('evCard').addEventListener('click', nextEv);
 function toast(t) {
   const box = $('toasts'), d = document.createElement('div');
   d.innerHTML = t; box.appendChild(d);
@@ -1140,7 +1276,7 @@ function startHandDrag() {
   hd.active = true; sel = hd.i; ghost = null; computeTargets();
   hd.btn.classList.add('dragging'); document.body.classList.add('dragmode');
   const k = view.k, w = S * k, h = H * k, t = cur().hand[sel];
-  dragEl = document.createElement('div'); dragEl.id = 'dragTile';
+  dragEl = document.createElement('div'); dragEl.id = 'dragTile'; if (cur().hand[sel] && cur().hand[sel].bk) dragEl.className = 'bkt';
   dragEl.innerHTML = `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">${triSVG([[w / 2, 0], [w, h], [0, h]], hv(t), { fs: S * .245 * k, bk: t.bk })}</svg>`;
   hd.w = w; hd.h = h;
   document.body.appendChild(dragEl);
@@ -1300,8 +1436,8 @@ function showRules(back) {
       <li><b>👀 Espion</b> : voyez les tuiles de vos adversaires pendant votre tour.</li>
       <li><b>🔒 Gel de la pioche</b> : à son prochain tour, l’adversaire ne peut pas piocher ; s’il ne peut rien poser, il doit passer (−10).</li>
       <li><b>🃏 Joker</b> : un coin de votre prochaine tuile peut valoir n’importe quel nombre (il apparaît souligné en orange).</li>
-      <li><b>🔁 Reprise</b> (chaque joueur en reçoit 0, 1 ou 2 selon le réglage de la partie, 1 par défaut) : juste après avoir posé, tant que l’adversaire n’a pas joué, reprenez votre tuile (vous perdez ses points) et rejouez.</li>
-      <li><b>🎯 Vol</b> : prenez une tuile au hasard chez un adversaire.</li>
+      <li><b>🔁 Reprise</b> (chaque joueur en reçoit 0, 1 ou 2 selon le réglage de la partie, aucune par défaut) : juste après avoir posé, tant que l’adversaire n’a pas joué, reprenez votre tuile (vous perdez ses points) et rejouez.</li>
+      <li><b>🎯 Vol</b> : trois tuiles d’un adversaire sont révélées au hasard ; prenez celle de votre choix.</li>
       <li><b>💣 Bombe</b> : faites exploser une tuile en bordure du plateau ; celui qui l’a posée perd ses points, et elle retourne dans la pioche.</li>
       <li><b>⚡ Rafale</b> : posez deux tuiles dans le même tour.</li>
       <li><b>🎲 Coffre surprise</b> (automatique) : compléter un hexagone fait gagner un bonus au hasard.</li>
@@ -1330,7 +1466,8 @@ function ser() {
   const u = G.undoSnap;
   return JSON.stringify({
     gid: G.gid, cfg: G.cfg, round: G.round, current: G.current, draws: G.draws, passes: G.passes, over: !!G.over, result: G.result || null,
-    freezeNext: !!G.freezeNext, drawFrozen: !!G.drawFrozen, extra: !!G.extra, lastK: G.lastK || null, starter: G.starter, nextStarter: G.nextStarter,
+    freezeNext: !!G.freezeNext, freezeBy: G.freezeBy ?? null, drawFrozen: !!G.drawFrozen, extra: !!G.extra, lastK: G.lastK || null, starter: G.starter, nextStarter: G.nextStarter,
+    pev: G.pev || [], pevId: G.pevId || 0,
     spy: G.spy || 0, chest: !!G.chest, logId: G.logId || 0, log: G.log.slice(-20), bn: G.bn || null, bnId: G.bnId || 0, pop: G.pop || null, popId: G.popId || 0,
     players: G.players.map(p => ({ name: p.name, uid: p.uid, color: p.color, score: p.score, hand: p.hand.map(T), powers: p.powers, hints: p.hints,
       doubleArmed: !!p.doubleArmed, jokerArmed: !!p.jokerArmed, rafaleArmed: !!p.rafaleArmed })),
@@ -1355,6 +1492,7 @@ function sync() {
   if (!ONLINE || !G || !Net || TRAINING) return;
   if (inflight) { again = true; return; }
   const s = ser(); if (s === lastSynced) return;
+  firstLoad = false; // la partie est déjà affichée ici : les prochains coups adverses seront animés
   const base = gameVer, status = G.over ? 'over' : 'playing';
   lastSynced = s; inflight = true;
   Net.tx(curV => ((curV ? curV.ver : 0) !== base) ? undefined : { ver: base + 1, status, s, host: null, t: Date.now() })
@@ -1386,7 +1524,7 @@ function applyRemote(val) {
   if (fresh || firstLoad) {
     if (fresh) shownEnd = null;
     hideModal(); view = { x: 0, y: 0, k: 1 }; fitView(false);
-    seenLog = G.logId || 0; seenBn = G.bn ? G.bn.id : 0; seenPop = G.pop ? G.pop.id : 0;
+    seenLog = G.logId || 0; seenBn = G.bn ? G.bn.id : 0; seenPop = G.pop ? G.pop.id : 0; seenPev = G.pevId || 0;
     firstLoad = false;
     render();
   } else {
@@ -1396,6 +1534,7 @@ function applyRemote(val) {
     render();
     if (newPop) { ensureVisible(newPop.c, newPop.r); pop(newPop.c, newPop.r, newPop.txt, newPop.sub); }
     if (G.bn && G.bn.id > seenBn) { seenBn = G.bn.id; bannerShow(G.bn.t); }
+    (G.pev || []).filter(e => e.id > seenPev && e.seat !== ME).forEach(announce); seenPev = G.pevId || 0;
   }
   if (G.over && G.result && shownEnd !== G.gid) setTimeout(showEnd, fresh ? 0 : 900);
   if (!wasMyTurn && humanTurn()) notifyTurn();
