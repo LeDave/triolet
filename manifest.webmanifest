@@ -1,7 +1,7 @@
 {
-  "name": "Triominos",
-  "short_name": "Triominos",
-  "description": "Triominos entre amis, en ligne ou contre l'ordinateur.",
+  "name": "Triolet",
+  "short_name": "Triolet",
+  "description": "Triolet entre amis, en ligne ou contre l'ordinateur.",
   "lang": "fr",
   "start_url": "./",
   "scope": "./",
