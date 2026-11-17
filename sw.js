@@ -1,7 +1,7 @@
-// Service worker Triominos : garde le jeu en mémoire pour l'ouvrir rapidement, même hors ligne.
+// Service worker Triolet : garde le jeu en mémoire pour l'ouvrir rapidement, même hors ligne.
 // Les fichiers du site passent d'abord par le réseau (les mises à jour arrivent tout de suite) ;
 // la copie locale ne sert que sans connexion.
-const CACHE = 'triominos-v1';
+const CACHE = 'triolet-v1';
 const CORE = ['./', './index.html', './config.js', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-maskable-512.png', './icon-180.png'];
 
 self.addEventListener('install', e => {
