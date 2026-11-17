@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Triominos</title>
+<title>Triolet</title>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#1b5a8e">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Triominos">
+<meta name="apple-mobile-web-app-title" content="Triolet">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -47,6 +47,16 @@ svg text{font-family:'Fredoka',system-ui,sans-serif;font-weight:700;text-anchor:
 .ghost .hlp{stroke:#f2c14e;opacity:.85}
 .pop{font-size:26px;fill:#fff;stroke:#0c2a4a;stroke-width:5px;paint-order:stroke;animation:rise 1.7s ease-out forwards;transform-box:fill-box}
 .pop.bonus{fill:var(--gold);font-size:22px}
+.boom text,.boom circle{pointer-events:none}
+.bwave{fill:none;stroke:#ffcf33;stroke-width:5;transform-box:fill-box;transform-origin:center;animation:bwave .7s ease-out forwards}
+@keyframes bwave{from{transform:scale(.2);opacity:.95}to{transform:scale(3.4);opacity:0}}
+.bflash{text-anchor:middle;dominant-baseline:central;transform-box:fill-box;transform-origin:center;animation:bflash .6s ease-out forwards}
+@keyframes bflash{0%{transform:scale(.2);opacity:0}25%{transform:scale(1.35);opacity:1}100%{transform:scale(1.7);opacity:0}}
+.bdeb{text-anchor:middle;dominant-baseline:central;animation:bdeb .95s ease-out forwards}
+@keyframes bdeb{0%{transform:translate(0,0) scale(.4);opacity:0}15%{opacity:1}100%{transform:translate(var(--dx),var(--dy)) scale(1.1);opacity:0}}
+.bmock{text-anchor:middle;dominant-baseline:central;animation:bmock 1.9s cubic-bezier(.3,1.5,.5,1) forwards}
+@keyframes bmock{0%{transform:translateY(12px) scale(.2);opacity:0}22%{transform:translateY(-4px) scale(1.25);opacity:1}40%{transform:translateY(-6px) rotate(-10deg)}58%{transform:translateY(-10px) rotate(10deg)}76%{transform:translateY(-12px) rotate(-6deg)}85%{opacity:1}100%{transform:translateY(-40px);opacity:0}}
+.bpts{text-anchor:middle;dominant-baseline:central;fill:#ff5a5a;stroke:#3a0a0a;stroke-width:3;paint-order:stroke;font-weight:700;animation:rise 1.8s ease-out forwards}
 @keyframes rise{0%{opacity:0;transform:translateY(8px)}15%{opacity:1}75%{opacity:1}100%{opacity:0;transform:translateY(-46px)}}
 
 /* ---- boutons flottants ---- */
@@ -182,6 +192,11 @@ table.res tr.win td{color:var(--gold)}
 .helptbl td{padding:5px 4px;border-bottom:1px solid rgba(255,255,255,.07);vertical-align:top}
 .helptbl td.n{text-align:right;font-weight:700;color:var(--gold);white-space:nowrap}
 .lobby{text-align:center}
+#fwWrap{position:fixed;inset:0;z-index:45;pointer-events:none;background:rgba(4,12,28,.55);animation:fwBg .5s ease}
+#fwWrap canvas{position:absolute;inset:0;width:100%;height:100%}
+.fwText{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);font-size:clamp(30px,9vw,64px);font-weight:700;color:var(--gold);text-shadow:0 4px 0 #5b3f07,0 8px 30px rgba(0,0,0,.7);white-space:nowrap;animation:fwTxt 5s ease forwards}
+@keyframes fwBg{from{opacity:0}to{opacity:1}}
+@keyframes fwTxt{0%{opacity:0;transform:translate(-50%,-50%) scale(.4)}12%{opacity:1;transform:translate(-50%,-50%) scale(1.15)}20%{transform:translate(-50%,-50%) scale(1)}90%{opacity:1}100%{opacity:0}}
 .stealBar{display:flex;gap:8px;background:rgba(12,34,60,.9);backdrop-filter:blur(6px);border:2px solid var(--gold);border-radius:16px;padding:8px;box-shadow:0 8px 24px rgba(0,0,0,.45);animation:stealIn .3s ease}
 @keyframes stealIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
 .stealBar .stealT{padding:6px 6px 4px;border-radius:12px}
@@ -349,8 +364,11 @@ const POWERS = [
   { k: 'chest', ic: '🎲', l: 'Coffre surprise', tip: 'Compléter un hexagone fait gagner un bonus au hasard', passive: true }
 ];
 const PW = Object.fromEntries(POWERS.map(x => [x.k, x]));
-const isOn = k => !!(PW[k] && (PW[k].fixed ? cfg.undos > 0 : cfg.bonus.includes(k)));
-let cfg = { opp: 1, level: 'expert', dist: 'start', btiles: 0, uses: 1, hints: 2, undos: 0, bonus: POWERS.filter(x => !x.fixed).map(x => x.k) };
+const withBonus = () => cfg.mode !== 'normal';
+const advOn = () => cfg.adv !== 'non';
+const undoOn = () => cfg.undo === 'oui';
+const isOn = k => !!(PW[k] && (PW[k].fixed ? undoOn() : (withBonus() && cfg.bonus.includes(k))));
+let cfg = { opp: 1, level: 'expert', mode: 'bonus', dist: 'tiles', btiles: 8, uses: 1, hints: 2, undo: 'non', adv: 'oui', bonus: POWERS.filter(x => !x.fixed).map(x => x.k) };
 let G = null, sel = null, ghost = null, targetMap = new Map(), freshK = null, aiTimer = null;
 // ONLINE : partie en ligne ; ME : siège du joueur local (0 hors ligne)
 let ONLINE = false, ME = 0, SEATS = null;
@@ -417,10 +435,10 @@ function allMoves(hand, joker = false) {
 function newGame(prevStarter) {
   clearTimeout(aiTimer);
   G = { gid: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), cfg: JSON.parse(JSON.stringify(cfg)),
-    players: [], round: 0, level: cfg.level, mode: null, spy: 0, chest: cfg.bonus.includes('chest'), log: [], logId: 0 };
+    players: [], round: 0, level: cfg.level, mode: null, spy: 0, chest: withBonus() && cfg.bonus.includes('chest'), log: [], logId: 0 };
   const n = ONLINE ? SEATS.length : cfg.opp + 1;
   for (let i = 0; i < n; i++) {
-    const powers = {}; POWERS.forEach(x => { if (!x.passive) powers[x.k] = x.fixed ? cfg.undos : cfg.bonus.includes(x.k) && cfg.dist === 'start' ? cfg.uses : 0; });
+    const powers = {}; POWERS.forEach(x => { if (!x.passive) powers[x.k] = x.fixed ? (undoOn() ? Infinity : 0) : (withBonus() && cfg.dist === 'start' && cfg.bonus.includes(x.k)) ? cfg.uses : 0; });
     G.players.push({ name: ONLINE ? SEATS[i].name : NAMES[i], uid: ONLINE ? SEATS[i].uid : null, human: ONLINE ? i === ME : i === 0, ai: !ONLINE && i > 0,
       score: 0, hand: [], color: PCOL[i], powers, hints: cfg.hints });
   }
@@ -433,11 +451,11 @@ function newRound() {
   G.round++; G.board = new Map(); G.vmap = new Map(); G.lastK = null; G.passes = 0; G.over = false; G.result = null; G.draws = 0; G.undoSnap = null;
   G.pool = shuffle(TILES.map(t => t.slice()));
   // tuiles ✨ : certaines tuiles portent un bonus, gagné en les posant
-  const bks = POWERS.filter(x => !x.passive && !x.fixed && cfg.bonus.includes(x.k)).map(x => x.k);
-  if (cfg.dist === 'tiles' && bks.length) shuffle(G.pool.slice()).slice(0, cfg.btiles).forEach(t => { t.bk = bks[Math.random() * bks.length | 0]; });
+  const bks = (withBonus() && cfg.dist === 'tiles') ? POWERS.filter(x => !x.passive && !x.fixed && cfg.bonus.includes(x.k)).map(x => x.k) : [];
+  if (bks.length) shuffle(G.pool.slice()).slice(0, cfg.btiles).forEach(t => { t.bk = bks[Math.random() * bks.length | 0]; });
   const n = G.players.length, deal = n === 2 ? 9 : 7;
   G.players.forEach(p => { p.hand = sortHand(G.pool.splice(0, deal)); p.roundStart = p.score; });
-  G.freezeNext = false; G.drawFrozen = false; G.extra = false;
+  G.freezeNext = false; G.drawFrozen = false; G.extra = false; G.afterBonus = null;
   sel = null; ghost = null; targetMap = new Map();
   let starter = G.nextStarter;
   if (starter == null) {
@@ -481,24 +499,26 @@ function placeMove(pi, ti, m) {
   pop(m.c, m.r, popTxt, popSub);
   if (mult === 2 && !m.bonus) banner('✖2 Double ! +' + m.pts * 2);
   else if (m.bonus) banner((m.label === 'Pont' ? '🌉 ' : /exagone/.test(m.label) ? '⬡ ' : '⭐ ') + m.label + ' ! +' + m.bonus);
-  if (placedTile.bk) {
-    const w = PW[placedTile.bk]; snap.bk = placedTile.bk; placedTile.bk = null;
-    p.powers[w.k] = (p.powers[w.k] || 0) + 1;
-    pevent(pi, 'gain', w.k, { via: 'tile' });
-    addLog(vous(p) ? `✨ Vous posez une tuile bonus et gagnez ${w.ic} ${w.l}` : `✨ ${p.name} pose une tuile bonus et gagne ${w.ic} ${w.l}`);
-    setTimeout(() => banner(vous(p) ? `✨ Vous gagnez ${w.ic} ${w.l} !` : `✨ ${p.name} gagne ${w.ic} ${w.l}`), m.bonus || mult === 2 ? 1400 : 300);
-  }
-  if (G.chest && /exagone/.test(m.label)) {
-    const pool = POWERS.filter(x => !x.passive && !x.fixed && cfg.bonus.includes(x.k));
-    if (pool.length) {
-      const w = pool[Math.random() * pool.length | 0];
-      p.powers[w.k] = (p.powers[w.k] || 0) + 1; snap.chest = w.k;
-      pevent(pi, 'gain', w.k, { via: 'chest' });
-      addLog(`🎲 Coffre surprise : ${p.name} ${vous(p) ? 'gagnez' : 'gagne'} ${w.ic} ${w.l}`);
-      setTimeout(() => banner(`🎲 ${w.ic} ${w.l} pour ${p.name} !`), 1300);
-    }
-  }
   if (p.hand.length === 0) { finishGame(pi); return; }
+  // --- bonus : poser une tuile ✨ (ou compléter un hexagone) REMPLIT votre réserve ; vous activez le pouvoir quand vous voulez via les boutons ---
+  const grant = (w, hex) => {
+    p.powers[w.k] = (p.powers[w.k] || 0) + 1;
+    addLog(`${hex ? '🎲 Coffre surprise' : '✨ Bonus'} : ${p.name} ${vous(p) ? 'gagnez' : 'gagne'} ${w.ic} ${w.l}`);
+    pevent(pi, 'gain', w.k, { via: hex ? 'chest' : 'tile' }); // carte explicative (vous toujours ; adversaire si l'option est activée)
+  };
+  if (withBonus() && cfg.dist === 'tiles' && placedTile.bk) {
+    const w = POWERS.find(x => x.k === placedTile.bk);
+    if (w) { snap.bk = placedTile.bk; placedTile.bk = null; grant(w, false); }
+  }
+  if (withBonus() && G.chest && /exagone/.test(m.label)) {
+    const pool = POWERS.filter(x => !x.passive && !x.fixed && cfg.bonus.includes(x.k));
+    if (pool.length) { const w = pool[Math.random() * pool.length | 0]; snap.chest = w.k; grant(w, true); }
+  }
+  endTurnAfterPlace(pi, placedTile, m, mult, cell, snap, true);
+}
+function maybeAfter() { if (G && G.afterBonus) { const f = G.afterBonus; G.afterBonus = null; f(); } }
+function endTurnAfterPlace(pi, placedTile, m, mult, cell, snap, allowUndo) {
+  const p = G.players[pi];
   if (p.rafaleArmed) {
     p.rafaleArmed = false; G.extra = true; G.draws = 0; G.aiPowerUsed = true;
     addLog(`⚡ Rafale : ${p.name} ${vous(p) ? 'rejouez' : 'rejoue'} !`); setTimeout(() => banner('⚡ Rafale : encore une !'), 700);
@@ -506,10 +526,105 @@ function placeMove(pi, ti, m) {
     if (p.ai) aiTimer = setTimeout(aiTurn, 1100);
     return;
   }
-  // Reprise : possible tant que l'adversaire n'a pas joué
-  if (!p.ai && p.powers.undo > 0 && !G.extra) Object.assign(snap, { k, pts: m.pts * mult, tile: placedTile, mult, jk: m.jk ?? -1 });
+  if (allowUndo && !p.ai && p.powers.undo > 0 && !G.extra) Object.assign(snap, { k: K(cell.c, cell.r), pts: cell.pts, tile: placedTile, mult, jk: m.jk ?? -1 });
   else snap.k = null;
   nextTurn(snap.k ? snap : null);
+}
+// déclenche un bonus posé ; appelle done() une fois résolu (y compris après un choix du joueur)
+function resolveBonus(pi, kind, m, cell, done) {
+  const p = G.players[pi], human = (pi === ME) && !p.ai, adv = pi !== ME;
+  const show = txt => { if (!adv || advOn()) banner(txt); };
+  if (kind === 'double') {
+    p.score += m.pts; cell.pts += m.pts;
+    addLog(`✖2 ${vous(p) ? 'Vous doublez votre tuile' : p.name + ' double sa tuile'} (+${m.pts})`);
+    pevent(pi, 'use', 'double', {}); show('✖2 Double ! +' + m.pts);
+    return done();
+  }
+  if (kind === 'joker') { p.jokerArmed = true; addLog(`🃏 ${vous(p) ? 'Vous armez un Joker' : p.name + ' arme un Joker'}`); pevent(pi, 'use', 'joker', {}); show('🃏 Joker !'); return done(); }
+  if (kind === 'spy') {
+    const oi = G.players.findIndex((q, i) => i !== pi && q.hand.length);
+    if (oi >= 0) { if (human) G.spy = pi + 1; pevent(pi, human ? 'spy' : 'use', 'spy', { target: oi }); }
+    show('👀 Espion !'); return done();
+  }
+  if (kind === 'freeze') {
+    const tgt = (pi + 1) % G.players.length;
+    G.freezeNext = true; G.freezeBy = pi;
+    addLog(`🔒 ${G.players[tgt].name} ne pourra pas piocher au prochain tour`); pevent(pi, 'use', 'freeze', { target: tgt }); show('🔒 Gel !');
+    return done();
+  }
+  if (kind === 'rafale') { p.rafaleArmed = true; addLog(`⚡ ${vous(p) ? 'Vous posez' : p.name + ' pose'} une 2ᵉ tuile`); pevent(pi, 'use', 'rafale', {}); show('⚡ Rafale !'); return done(); }
+  if (kind === 'gift') {
+    const opps = G.players.filter((q, i) => i !== pi);
+    if (p.hand.length < 2 || !opps.length) return done();
+    if (human) { G.mode = 'gift'; G.afterBonus = done; G.msg = ''; sel = null; ghost = null; render(); return; }
+    let ti = 0; p.hand.forEach((t, i) => { if (tsum(t) > tsum(p.hand[ti])) ti = i; });
+    const to = opps.reduce((a, b) => b.score > a.score ? b : a);
+    giveTile(p, ti, to); return done();
+  }
+  if (kind === 'swap') {
+    if (!G.pool.length) return done();
+    if (human) { G.mode = 'swap'; G.afterBonus = done; G.msg = ''; render(); return; }
+    let ti = 0; p.hand.forEach((t, i) => { if (tsum(t) > tsum(p.hand[ti])) ti = i; });
+    swapCore(p, ti); return done();
+  }
+  if (kind === 'steal') {
+    const opp = G.players.filter((q, i) => i !== pi && q.hand.length).sort((a, b) => b.hand.length - a.hand.length)[0];
+    if (!opp) return done();
+    if (human) { G.afterBonus = done; startSteal(p, opp); return; }
+    const t = opp.hand.splice(Math.random() * opp.hand.length | 0, 1)[0]; t.rot = 0; t.fav = false; keepLocal(t); p.hand.push(t);
+    pevent(pi, 'use', 'steal', { from: G.players.indexOf(opp), t: t.join('-') });
+    addLog(`🎯 ${p.name} vole une tuile à ${opp.name}`); show('🎯 Vol !');
+    return done();
+  }
+  if (kind === 'bomb') {
+    const rem = [...G.board.keys()].filter(canRemove);
+    if (!rem.length) return done();
+    if (human) { G.mode = 'bomb'; G.afterBonus = done; G.msg = ''; render(); return; }
+    let bk = rem[0], bp = -1;
+    for (const k of rem) { const c = G.board.get(k); if (c.owner !== pi && c.pts > bp) { bp = c.pts; bk = k; } }
+    bombCore(bk); return done();
+  }
+  done();
+}
+function swapCore(p, ti) {
+  G.undoSnap = null;
+  const t = p.hand.splice(ti, 1)[0]; t.rot = 0; t.fav = false; keepLocal(t);
+  G.pool.splice(Math.random() * (G.pool.length + 1) | 0, 0, t);
+  const nt = G.pool.splice(Math.random() * G.pool.length | 0, 1)[0];
+  p.hand.push(nt); if (p.human) { drawnT = nt; sortHand(p.hand); }
+  if (p.powers.swap > 0) p.powers.swap--;
+  pevent(G.players.indexOf(p), 'use', 'swap');
+  addLog(`🔄 ${p.name} échange une tuile`, vous(p) ? `🔄 Vous échangez ${t.join('-')} contre ${nt.join('-')}` : null);
+  if (p === meP() || advOn()) banner('🔄 Échange' + (p.human ? ' : ' + nt.join('-') : ''), true);
+}
+function bombCore(k) {
+  G.undoSnap = null;
+  const cell = G.board.get(k); if (!cell) return;
+  const owner = G.players[cell.owner], me = G.players[G.current];
+  removeCell(k);
+  owner.score -= cell.pts;
+  const t = cell.tile; t.rot = 0; t.fav = false;
+  G.pool.splice(Math.random() * (G.pool.length + 1) | 0, 0, t);
+  if (me.powers.bomb > 0) me.powers.bomb--;
+  pevent(G.current, 'use', 'bomb', { t: t.join('-'), owner: cell.owner, pts: cell.pts, c: cell.c, r: cell.r });
+  addLog(`💣 Boum ! ${t.join('-')} explose : ${vous(owner) ? 'vous perdez' : owner.name + ' perd'} ${cell.pts} pts`);
+  ensureVisible(cell.c, cell.r); boomFx(cell.c, cell.r, cell.pts, cell.owner === ME);
+  if (G.current === ME || advOn()) banner('💣 Boum ! −' + cell.pts);
+}
+function startSteal(me, q) {
+  const picks = shuffle(q.hand.slice()).slice(0, 3);
+  if (me.powers.steal > 0) me.powers.steal--;
+  const take = t => {
+    stealPick = null; G.mode = null;
+    const i = q.hand.indexOf(t);
+    if (i >= 0) {
+      q.hand.splice(i, 1); t.rot = 0; t.fav = false; keepLocal(t); me.hand.push(t); drawnT = t;
+      pevent(G.players.indexOf(me), 'use', 'steal', { from: G.players.indexOf(q), t: t.join('-') });
+      addLog(`🎯 ${me.name} vole la tuile ${t.join('-')} à ${q.name}`, vous(me) ? `🎯 Vous volez ${t.join('-')} à ${q.name}` : null); banner(`🎯 Volé : ${t.join('-')}`, true);
+    }
+    render(); maybeAfter();
+  };
+  stealPick = { q, picks, take }; G.mode = 'steal'; render();
 }
 function nextTurn(undoSnap) {
   if (G.current === ME) recapFrom = G.logId || 0; // vos propres coups ne sont pas récapitulés
@@ -535,7 +650,8 @@ function doUndo() {
   removeCell(u.k);
   me.score -= u.pts;
   u.tile.rot = u.tile.rot || 0; me.hand.push(u.tile);
-  me.powers.undo--;
+  if (me.powers.undo !== Infinity && me.powers.undo > 0) me.powers.undo--;
+  G.afterBonus = null;
   pevent(u.seat, 'use', 'undo', { t: u.tile.join('-'), pts: u.pts });
   if (u.mult === 2) me.doubleArmed = true;
   if (u.jk >= 0) me.jokerArmed = true;
@@ -623,9 +739,57 @@ function finishGame(wi) {
   render();
   setTimeout(showEnd, 900);
 }
+// fin de partie : feu d'artifice pendant 5 s, puis l'écran des scores (pas de fête en cas d'abandon)
 function showEnd() {
   if (!G || !G.over || !G.result || shownEnd === G.gid) return;
-  shownEnd = G.gid;
+  const gid = shownEnd = G.gid;
+  EVQ.length = 0; if (evShown) nextEv(); // ferme une éventuelle carte de bonus encore affichée
+  if (G.result.ff != null) return showEndModal();
+  const top = Math.max(...G.players.map(p => p.score)), champs = G.players.filter(p => p.score === top);
+  fireworks(5000, champs.length > 1 ? '🤝 Égalité !' : champs[0] === meP() ? '🏆 Victoire !' : `🏆 ${champs[0].name} gagne !`, champs.length === 1 && champs[0] === meP());
+  setTimeout(() => { if (G && G.gid === gid && G.over && G.result) showEndModal(); }, 5000);
+}
+function fireworks(ms, text, big) {
+  const old = document.getElementById('fwWrap'); if (old) old.remove();
+  const wrap = document.createElement('div'); wrap.id = 'fwWrap';
+  wrap.innerHTML = `<canvas></canvas><div class="fwText">${text}</div>`;
+  document.body.appendChild(wrap);
+  const cv = wrap.firstChild, ctx = cv.getContext('2d'), dpr = Math.min(2, devicePixelRatio || 1);
+  const W = cv.width = innerWidth * dpr, Hh = cv.height = innerHeight * dpr;
+  const rockets = [], parts = [], t0 = performance.now();
+  const COL = ['#ff4d4d', '#ffd23f', '#4dff88', '#4dc3ff', '#c77dff', '#ff8fd0', '#ffffff', '#ff9a3c'];
+  let last = t0, nextLaunch = 0;
+  const launch = () => rockets.push({ x: W * (.1 + Math.random() * .8), y: Hh, vy: -(Hh * (.9 + Math.random() * .5)), ty: Hh * (.1 + Math.random() * .42), c: COL[Math.random() * COL.length | 0] });
+  const burst = r => {
+    const n = (big ? 130 : 70) + Math.random() * (big ? 110 : 60) | 0, sp = ((big ? 190 : 160) + Math.random() * 200) * dpr, c2 = COL[Math.random() * COL.length | 0], ring = Math.random() < (big ? .4 : .3);
+    for (let i = 0; i < n; i++) {
+      const a = Math.PI * 2 * i / n + Math.random() * .2, v = ring ? sp : sp * (.25 + Math.random() * .85);
+      parts.push({ x: r.x, y: r.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 1, d: .5 + Math.random() * .5, c: Math.random() < .5 ? r.c : c2, s: (1.6 + Math.random() * 1.8) * dpr });
+    }
+  };
+  (function frame(now) {
+    if (!wrap.isConnected) return;
+    const dt = Math.min(.05, (now - last) / 1000), el = now - t0; last = now;
+    ctx.globalCompositeOperation = 'destination-out'; ctx.fillStyle = 'rgba(0,0,0,.22)'; ctx.fillRect(0, 0, W, Hh);
+    ctx.globalCompositeOperation = 'lighter';
+    if (el < ms - 700 && el >= nextLaunch) { launch(); if (big) { launch(); launch(); } else if (Math.random() < .5) launch(); nextLaunch = el + (big ? 70 : 140) + Math.random() * (big ? 110 : 260); }
+    for (let i = rockets.length - 1; i >= 0; i--) {
+      const r = rockets[i]; r.y += r.vy * dt;
+      ctx.fillStyle = r.c; ctx.beginPath(); ctx.arc(r.x, r.y, 2.2 * dpr, 0, 7); ctx.fill();
+      if (r.y <= r.ty) { burst(r); rockets.splice(i, 1); }
+    }
+    for (let i = parts.length - 1; i >= 0; i--) {
+      const q = parts[i];
+      q.vx *= .985; q.vy = q.vy * .985 + 260 * dpr * dt; q.x += q.vx * dt; q.y += q.vy * dt; q.life -= q.d * dt;
+      if (q.life <= 0) { parts.splice(i, 1); continue; }
+      ctx.globalAlpha = Math.max(0, q.life); ctx.fillStyle = q.c; ctx.beginPath(); ctx.arc(q.x, q.y, q.s * (Math.random() < .12 ? 1.8 : 1), 0, 7); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    if (el < ms) requestAnimationFrame(frame); else wrap.remove();
+  })(t0);
+}
+function showEndModal() {
+  if (!G || !G.result) return;
   const ps = G.players, { wi, to, bonus, others, rem, ff } = G.result, me = ps[ME], isMe = p => p === me;
   let title, detail;
   if (ff != null) {
@@ -733,12 +897,12 @@ function giveTile(from, ti, to) {
   const t = from.hand.splice(ti, 1)[0];
   t.rot = 0; t.fav = false; keepLocal(t);
   to.hand.push(t); if (to.human) sortHand(to.hand);
-  from.powers.gift--;
+  if (from.powers.gift > 0) from.powers.gift--;
   pevent(G.players.indexOf(from), 'use', 'gift', { to: G.players.indexOf(to), t: t.join('-') });
   const txt = vous(from) ? `Vous offrez ${t.join('-')} à ${to.name}` : `${from.name} ${vous(to) ? 'vous offre' : 'offre à ' + to.name} ${t.join('-')}`;
   addLog('🎁 ' + txt); banner('🎁 ' + txt);
   sel = null; ghost = null; targetMap = new Map(); G.mode = null;
-  render();
+  render(); maybeAfter();
 }
 function rebuildVmap() {
   G.vmap = new Map();
@@ -792,26 +956,8 @@ function usePower(kind) {
   G.msg = ''; ghost = null; sel = null; targetMap = new Map();
   if (kind === 'gift' || kind === 'swap' || kind === 'bomb') { G.mode = G.mode === kind ? null : kind; render(); return; }
   G.mode = null; G.undoSnap = null;
-  if (kind === 'steal') {
-    chooseOpponent('🎯 Vol', me, q => {
-      // 3 tuiles de l'adversaire révélées au hasard : on choisit celle qu'on prend (pas d'annulation après avoir vu)
-      const picks = shuffle(q.hand.slice()).slice(0, 3);
-      me.powers.steal--;
-      const take = t => {
-        stealPick = null; G.mode = null;
-        const i = q.hand.indexOf(t); if (i < 0) return;
-        q.hand.splice(i, 1);
-        t.rot = 0; t.fav = false; keepLocal(t); me.hand.push(t); drawnT = t;
-        pevent(G.current, 'use', 'steal', { from: G.players.indexOf(q), t: t.join('-') });
-        addLog(`🎯 ${me.name} vole la tuile ${t.join('-')} à ${q.name}`, `🎯 Vous volez ${t.join('-')} à ${q.name}`); banner(`🎯 Volé : ${t.join('-')}`, true); render();
-      };
-      // les 3 tuiles s'affichent dans un bandeau : le plateau reste visible (déplacer / zoomer pour juger)
-      stealPick = { q, picks, take }; G.mode = 'steal';
-      render();
-    });
-    return;
-  }
-  me.powers[kind]--;
+  if (kind === 'steal') { chooseOpponent('🎯 Vol', me, q => startSteal(me, q)); return; }
+  if (me.powers[kind] > 0) me.powers[kind]--;
   pevent(G.current, 'use', kind, kind === 'freeze' ? { target: (G.current + 1) % G.players.length } : {});
   if (kind === 'double') { me.doubleArmed = true; addLog(vous(me) ? '✖2 Double activé : votre prochaine tuile compte double' : `✖2 ${me.name} active Double`); banner(vous(me) ? '✖2 Double activé !' : `✖2 Double pour ${me.name} !`); }
   if (kind === 'spy') { G.spy = G.current + 1; addLog(vous(me) ? '👀 Vous espionnez les mains adverses' : `👀 ${me.name} espionne vos tuiles`); }
@@ -866,7 +1012,7 @@ function showBonus() {
 }
 function showMenu() {
   if (!G) return ONLINE || (Net && !TRAINING) ? showLobby() : showSetup();
-  showModal(`<button class="mclose" id="mX">✕</button><h2>Triominos</h2>
+  showModal(`<button class="mclose" id="mX">✕</button><h2>Triolet</h2>
     <p style="margin:0;opacity:.75">Pioche : ${G.pool.length} tuiles · Vous : ${meP().score} pts${ONLINE ? ' · en ligne avec ' + G.players.filter(p => p !== meP()).map(p => p.name).join(', ') : ''}</p>
     <div class="menuList">
       <button class="btn" id="mmHelp">❓ Comment marquer des points</button>
@@ -887,23 +1033,13 @@ function showMenu() {
 }
 function bombAt(k) {
   if (!canRemove(k)) { G.msg = '💣 Choisissez une tuile en bordure (contour rouge).'; render(); return; }
-  G.undoSnap = null;
-  const cell = G.board.get(k), owner = G.players[cell.owner], me = cur();
-  removeCell(k);
-  owner.score -= cell.pts;
-  const t = cell.tile; t.rot = 0; t.fav = false;
-  G.pool.splice(Math.random() * (G.pool.length + 1) | 0, 0, t);
-  me.powers.bomb--; G.mode = null;
-  pevent(G.current, 'use', 'bomb', { t: t.join('-'), owner: cell.owner, pts: cell.pts });
-  addLog(`💣 Boum ! ${t.join('-')} explose : ${vous(owner) ? 'vous perdez' : owner.name + ' perd'} ${cell.pts} pts`);
-  banner('💣 Boum ! −' + cell.pts);
-  render();
+  bombCore(k); G.mode = null; render(); maybeAfter();
 }
 function applyMode(i) {
   const me = cur(), t = me.hand[i];
   if (!t) return;
   if (G.mode === 'gift') {
-    if (me.hand.length < 2) { G.msg = 'Vous ne pouvez pas offrir votre dernière tuile.'; G.mode = null; render(); return; }
+    if (me.hand.length < 2) { G.msg = 'Vous ne pouvez pas offrir votre dernière tuile.'; G.mode = null; render(); maybeAfter(); return; }
     const opps = G.players.filter(q => q !== me);
     if (opps.length === 1) return giveTile(me, i, opps[0]);
     showModal(`<h2>🎁 Offrir ${t.join('-')}</h2><p>À qui voulez-vous donner cette tuile ?</p>
@@ -914,16 +1050,8 @@ function applyMode(i) {
     return;
   }
   if (G.mode === 'swap') {
-    if (!G.pool.length) { G.mode = null; render(); return; }
-    G.undoSnap = null;
-    me.hand.splice(i, 1); t.rot = 0; t.fav = false;
-    G.pool.splice(Math.random() * (G.pool.length + 1) | 0, 0, t);
-    const nt = G.pool.splice(Math.random() * G.pool.length | 0, 1)[0];
-    me.hand.push(nt); drawnT = nt;
-    me.powers.swap--; G.mode = null;
-    pevent(G.current, 'use', 'swap');
-    addLog(`🔄 ${me.name} échange une tuile`, `🔄 Vous échangez ${t.join('-')} contre ${nt.join('-')}`); banner('🔄 Échange : ' + nt.join('-'), true);
-    render();
+    if (!G.pool.length) { G.mode = null; render(); maybeAfter(); return; }
+    swapCore(me, i); G.mode = null; render(); maybeAfter();
   }
 }
 function hint() {
@@ -1041,12 +1169,12 @@ function renderActions() {
   $('hintBtn').disabled = !my || me.hints <= 0 || !!G.mode;
   $('hintBadge').textContent = me.hints; $('hintBadge').style.display = me.hints ? '' : 'none';
   // boutons de bonus : un par bonus encore disponible (ou actif), au-dessus de « Conseil »
-  $('pwBtns').innerHTML = POWERS.filter(x => !x.passive && !x.fixed && isOn(x.k)).map(x => {
+  $('pwBtns').innerHTML = withBonus() ? POWERS.filter(x => !x.passive && !x.fixed && isOn(x.k)).map(x => {
     const n = me.powers[x.k] || 0, act = powerActive(x.k);
     if (!n && !act) return '';
     const ok = powerAvailable(x.k) || (act && G.mode === x.k);
     return `<button class="pwb ${act ? 'on' : ''} ${ok || act ? '' : 'off'}" data-p="${x.k}" title="${x.l} : ${x.tip}" aria-label="${x.l}" data-ok="${ok ? 1 : 0}">${x.ic}${n > 1 ? `<i>${n}</i>` : ''}</button>`;
-  }).join('');
+  }).join('') : '';
 
   const mult = my && me.doubleArmed ? 2 : 1;
   // barre d'action + message
@@ -1058,8 +1186,8 @@ function renderActions() {
     A.innerHTML = `<div class="stealBar">${stealPick.picks.map((t, j) => `<button class="stealT ${t.bk ? 'bkt' : ''}" data-j="${j}"><svg viewBox="0 0 74 70">${triSVG([[37, 4], [72, 66], [2, 66]], t, { fs: 17, ni: .47, bk: t.bk })}</svg>${t.bk ? `<small>${PW[t.bk].ic} ${PW[t.bk].l}</small>` : ''}</button>`).join('')}</div>`;
     A.querySelectorAll('.stealT').forEach(b => b.onclick = () => stealPick.take(stealPick.picks[+b.dataset.j]));
   } else if (my && G.mode) {
-    A.innerHTML = '<button class="btn" id="aCancelMode">✕ Annuler</button>';
-    $('aCancelMode').onclick = () => { G.mode = null; G.msg = ''; render(); };
+    A.innerHTML = `<button class="btn" id="aCancelMode">${G.afterBonus ? 'Passer ce bonus' : '✕ Annuler'}</button>`;
+    $('aCancelMode').onclick = () => { G.mode = null; G.msg = ''; if (G.afterBonus) maybeAfter(); else render(); };
   } else if (ghost && my && !(hd && hd.active)) {
     const m = ghost.list[ghost.i];
     A.innerHTML = `<button class="btn primary" id="aPlace">✓ Poser +${m.pts * mult}</button>
@@ -1108,12 +1236,14 @@ function pevent(seat, kind, k, d) {
   G.pevId = (G.pevId || 0) + 1;
   const e = { id: G.pevId, seat, kind, k, d: d || {} };
   G.pev = (G.pev || []).concat(e).slice(-10); seenPev = G.pevId;
-  if (seat !== ME || kind === 'gain') announce(e); // vos propres gains sont aussi expliqués
+  if (seat !== ME) { if (advOn()) announce(e); } // adversaire : carte seulement si l'option est activée
+  else if (kind === 'spy' || kind === 'gain') announce(e); // votre espion, ou un bonus que vous venez de gagner
 }
 function evText(e) {
   if (e.kind === 'recap') return { ic: '📋', ti: e.d.title, tx: e.d.lines.map(l => `<div style="margin:3px 0">${l}</div>`).join('') };
   const ps = G.players, who = ps[e.seat], n = who ? who.name : '?', d = e.d, w = PW[e.k] || { ic: '✨', l: 'Bonus' };
   const nm = i => i === ME ? 'vous' : ps[i].name;
+  if (e.kind === 'spy') { const opp = ps[d.target]; return { ic: '👀', ti: `Les tuiles de ${opp ? opp.name : 'l’adversaire'}`, tx: opp ? `<div class="spyhand" style="justify-content:center;margin:8px 0 0">${opp.hand.map(t => `<svg viewBox="0 0 74 70">${triSVG([[37, 4], [72, 66], [2, 66]], t, { fs: 17, ni: .47 })}</svg>`).join('')}</div>` : 'Aucune tuile à voir.' }; }
   if (e.kind === 'gain' && e.seat === ME) return { ic: w.ic,
     ti: `Vous gagnez ${w.l} !`,
     tx: `${d.via === 'chest' ? 'En complétant un hexagone, vous ouvrez le coffre surprise' : 'En posant cette tuile ✨, vous gagnez un bonus'} : <b>${w.ic} ${w.l}</b>.<br>${w.tip}.<br><span style="opacity:.8">Pour l’utiliser : son bouton rond au-dessus de « Conseil », pendant votre tour, avant de poser.</span>` };
@@ -1186,6 +1316,20 @@ function pop(c, r, txt, sub) {
   if (sub) mk(sub, cy + 22, 'pop bonus');
 }
 function bannerShow(t) { const b = $('banner'); b.textContent = t; b.classList.remove('show'); void b.offsetWidth; b.classList.add('show'); }
+const MOCKS = ['😜', '😝', '🤪', '😂', '😈', '🤭', '😏', '🤣'];
+function boomFx(c, r, pts, mine) {
+  const pp = cellPts(c, r), cx = (pp[0][0] + pp[1][0] + pp[2][0]) / 3, cy = (pp[0][1] + pp[1][1] + pp[2][1]) / 3;
+  const ns = 'http://www.w3.org/2000/svg', g = document.createElementNS(ns, 'g');
+  g.setAttribute('class', 'boom'); g.setAttribute('transform', `translate(${cx.toFixed(1)} ${cy.toFixed(1)})`);
+  const el = (tag, cls, attrs, txt) => { const e = document.createElementNS(ns, tag); e.setAttribute('class', cls); for (const k in attrs) e.setAttribute(k, attrs[k]); if (txt != null) e.textContent = txt; g.appendChild(e); return e; };
+  for (let i = 0; i < 2; i++) el('circle', 'bwave', { r: (S * .32).toFixed(1) }).style.animationDelay = (i * 130) + 'ms';
+  const deb = ['💥', '🔥', '💨', '✨'];
+  for (let i = 0; i < 9; i++) { const a = Math.PI * 2 * i / 9, d = el('text', 'bdeb', { 'font-size': (S * .3).toFixed(1) }, deb[i % deb.length]); d.style.setProperty('--dx', (Math.cos(a) * S).toFixed(1) + 'px'); d.style.setProperty('--dy', (Math.sin(a) * S).toFixed(1) + 'px'); }
+  el('text', 'bflash', { 'font-size': (S * .95).toFixed(1) }, '💥');
+  el('text', 'bmock', { 'font-size': (S * .6).toFixed(1), y: (-S * .12).toFixed(1) }, mine ? '😵' : MOCKS[Math.random() * MOCKS.length | 0]);
+  if (pts) el('text', 'bpts', { 'font-size': (S * .42).toFixed(1), y: (S * .55).toFixed(1) }, '−' + pts);
+  Lfx.appendChild(g); setTimeout(() => g.remove(), 2100);
+}
 function banner(t, localOnly) {
   bannerShow(t);
   if (ONLINE && G && !localOnly) { G.bnId = (G.bnId || 0) + 1; G.bn = { id: G.bnId, t }; seenBn = G.bnId; sync(); }
@@ -1286,22 +1430,29 @@ function showPower(k) {
 // réglages de la partie en cours
 function showOptions() {
   const c = G.cfg || cfg, me = meP();
-  const on = POWERS.filter(x => !x.fixed && (c.bonus || []).includes(x.k));
+  const bonusMode = c.mode !== 'normal';
+  const on = bonusMode ? POWERS.filter(x => !x.fixed && (c.bonus || []).includes(x.k)) : [];
   const row = (a, b) => `<tr><td>${a}</td><td class="n" style="white-space:normal">${b}</td></tr>`;
+  const tiles = c.dist === 'tiles';
   showModal(`<button class="mclose" id="mX">✕</button><h2>⚙️ Options de cette partie</h2>
     <table class="helptbl">
-      ${row('Mode', ONLINE ? 'En ligne' : `Contre l’ordinateur (${G.level === 'easy' ? 'facile' : 'expert'})`)}
+      ${row('Adversaire', ONLINE ? 'En ligne' : `Ordinateur (${G.level === 'easy' ? 'facile' : 'expert'})`)}
       ${row('Joueurs', G.players.map(p => p.name).join(', '))}
-      ${row('Utilisations de chaque bonus', c.uses + '×')}
-      ${row('Indices par partie', `${c.hints} <small style="opacity:.7">(il vous en reste ${me.hints})</small>`)}
-      ${row('Reprises par partie', c.undos ? `${c.undos} <small style="opacity:.7">(il vous en reste ${me.powers.undo || 0})</small>` : 'Aucune')}
+      ${row('Type', bonusMode ? '✨ Avec bonus' : '🎮 Normale')}
+      ${bonusMode ? row('Bonus', tiles ? 'Cachés sur les dominos' : 'Dispo tout le temps') : ''}
+      ${bonusMode && !tiles ? row('Utilisations de chaque bonus', c.uses + '×') : ''}
+      ${bonusMode ? row('Coups de bonus adverses', c.adv === 'non' ? 'Cachés' : 'Affichés') : ''}
+      ${row('Indices par partie', `${c.hints} <small style="opacity:.7">(reste ${me.hints})</small>`)}
+      ${row('Reprise', (c.undo === 'oui' || c.undos) ? 'Oui, sur tous vos coups' : 'Non')}
     </table>
-    <h3>Bonus de la partie</h3>
-    ${on.length ? `<ul class="helpsec">${on.map(x => `<li><b>${x.ic} ${x.l}</b>${x.passive ? ' (automatique)' : ` — il vous en reste ${me.powers[x.k] || 0}`}<br><span style="opacity:.8;font-size:13px">${x.tip}.</span></li>`).join('')}</ul>` : '<p>Aucun bonus.</p>'}
+    ${bonusMode ? `<h3>Bonus de la partie</h3>
+    ${on.length ? `<ul class="helpsec">${on.map(x => `<li><b>${x.ic} ${x.l}</b><br><span style="opacity:.8;font-size:13px">${x.tip}.</span></li>`).join('')}</ul>` : '<p>Aucun bonus.</p>'}
+    <p style="font-size:12.5px;opacity:.7">${tiles ? 'Les dominos bonus portent l’icône du bonus : le poser vous donne le pouvoir, à activer quand vous voulez.' : 'Activez un bonus avec son bouton rond, pendant votre tour.'}</p>` : ''}
     <p style="font-size:12.5px;opacity:.7">Ces réglages se choisissent au lancement d’une nouvelle partie.</p>
     <div class="mfoot"><button class="btn primary" id="mBack">Retour</button></div>`);
   $('mX').onclick = hideModal; $('mBack').onclick = showMenu;
 }
+
 $('hintBtn').onclick = hint;
 $('drawBtn').onclick = () => { if (humanTurn() && !G.mode && drawTile()) render(); };
 $('passBtn').onclick = () => { if (humanTurn() && (G.extra || G.drawFrozen || G.draws >= 3 || G.pool.length === 0)) passTurn(); };
@@ -1393,40 +1544,47 @@ function optGroup(name, items, val) {
 function showSetup() {
   clearTimeout(aiTimer);
   const onl = !!Net && !TRAINING, friend = onl && knownFriend();
+  const bon = withBonus(), tiles = cfg.dist === 'tiles';
+  const seg = (g, items) => `<div class="opts" data-g="${g}">${items.map(([v, l]) => `<button class="opt ${String(cfg[g]) === String(v) ? 'on' : ''}" data-v="${v}">${l}</button>`).join('')}</div>`;
   showModal(`
     <div class="hero"><svg width="150" height="70" viewBox="0 0 150 70">
       ${triSVG([[40, 4], [74, 64], [6, 64]], [5, 5, 5], { fs: 15 })}
       ${triSVG([[40, 4], [108, 4], [74, 64]], [5, 5, 3], { fs: 15 })}
       ${triSVG([[108, 4], [142, 64], [74, 64]], [3, 5, 1], { fs: 15 })}
     </svg></div>
-    <h2 style="text-align:center">Triominos</h2>
+    <h2 style="text-align:center">Triolet</h2>
     ${!Net && CONF_ERR ? `<div class="rule" style="border-color:#f87171;background:rgba(248,113,113,.12)">⚠️ <b>Mode en ligne désactivé.</b> ${CONF_ERR}</div>` : ''}
     <p style="text-align:center;opacity:.75;margin-top:0">${onl ? (friend ? `Nouvelle partie en ligne contre <b>${friend.name}</b>` : 'Nouvelle partie en ligne : votre ami pourra la rejoindre') : 'Posez vos triangles en faisant correspondre les nombres aux coins.'}</p>
-    ${onl ? '' : `<h3>Adversaires</h3>${optGroup('opp', [[1, '1 ordinateur'], [2, '2 ordinateurs'], [3, '3 ordinateurs']], cfg.opp)}
-    <h3>Niveau</h3>${optGroup('level', [['easy', 'Facile'], ['expert', 'Expert']], cfg.level)}`}
-    <h3>Bonus spéciaux</h3>
+    ${onl ? '' : `<h3>Adversaires</h3>${seg('opp', [[1, '1 ordinateur'], [2, '2 ordinateurs'], [3, '3 ordinateurs']])}
+    <h3>Niveau</h3>${seg('level', [['easy', 'Facile'], ['expert', 'Expert']])}`}
+    <h3>Type de partie</h3>${seg('mode', [['normal', '🎮 Normale'], ['bonus', '✨ Avec bonus']])}
+    ${bon ? `
+    <h3>Les bonus</h3>${seg('dist', [['tiles', 'Sur les dominos'], ['start', 'Dispo tout le temps']])}
+    <p style="font-size:12.5px;opacity:.7;margin:4px 0 0">${tiles ? 'Chaque bonus est caché sur un domino : le poser vous donne le pouvoir, à activer avec son bouton rond.' : 'Chaque joueur a tous les bonus dès le départ, à activer avec les boutons.'}</p>
+    ${tiles ? `<h3>Dominos bonus</h3>${seg('btiles', [[4, '4'], [8, '8'], [12, '12'], [16, '16'], [20, '20'], [24, '24']])}` : `<h3>Utilisations de chaque bonus</h3>${seg('uses', [[1, '1×'], [2, '2×'], [3, '3×']])}`}
+    <h3>Bonus en jeu</h3>
     <div class="opts multi" data-g="bonus">${POWERS.filter(x => !x.fixed).map(x => `<button class="opt ${cfg.bonus.includes(x.k) ? 'on' : ''}" data-v="${x.k}" title="${x.tip}">${x.ic} ${x.l}</button>`).join('')}</div>
-    <p style="font-size:12.5px;opacity:.7;margin:6px 0 0">🔁 La Reprise se règle à part, plus bas : chaque joueur en reçoit le même nombre.</p>
     <div class="minirow"><button class="btn small ghostbtn" id="bAll">Tous</button><button class="btn small ghostbtn" id="bNone">Aucun</button></div>
-    <h3>Utilisations de chaque bonus par partie</h3>${optGroup('uses', [[1, '1×'], [2, '2×'], [3, '3×']], cfg.uses)}
-    <h3>Indices par partie</h3>${optGroup('hints', [[0, 'Aucun'], [2, '2'], [5, '5']], cfg.hints)}
-    <h3>🔁 Reprises par partie</h3>${optGroup('undos', [[0, 'Aucune'], [1, '1'], [2, '2']], cfg.undos)}
+    <h3>Coups de bonus de l’adversaire</h3>${seg('adv', [['oui', 'Afficher'], ['non', 'Cacher']])}` : `<p style="font-size:12.5px;opacity:.7;margin:2px 0 0">Partie classique, sans bonus.</p>`}
+    <h3>Indices par partie</h3>${seg('hints', [[0, 'Aucun'], [2, '2'], [5, '5']])}
+    <h3>🔁 Reprise</h3>${seg('undo', [['non', 'Non'], ['oui', 'Oui, sur tous vos coups']])}
     <div class="mfoot">${onl && G ? '<button class="btn ghostbtn" id="mBackGame">Retour</button>' : ''}<button class="btn ghostbtn" id="mRules">Règles</button><button class="btn primary" id="mGo">${onl ? (friend ? 'Lancer la partie' : 'Créer la partie') : 'Jouer'}</button></div>`);
   const multi = document.querySelector('.opts.multi');
-  const syncB = () => { cfg.bonus = [...multi.querySelectorAll('.opt.on')].map(x => x.dataset.v); };
-  $('bAll').onclick = () => { multi.querySelectorAll('.opt').forEach(x => x.classList.add('on')); syncB(); };
-  $('bNone').onclick = () => { multi.querySelectorAll('.opt').forEach(x => x.classList.remove('on')); syncB(); };
+  const syncB = () => { if (multi) cfg.bonus = [...multi.querySelectorAll('.opt.on')].map(x => x.dataset.v); };
+  if ($('bAll')) $('bAll').onclick = () => { multi.querySelectorAll('.opt').forEach(x => x.classList.add('on')); syncB(); };
+  if ($('bNone')) $('bNone').onclick = () => { multi.querySelectorAll('.opt').forEach(x => x.classList.remove('on')); syncB(); };
   document.querySelectorAll('.opts').forEach(g => g.addEventListener('click', e => {
     const b = e.target.closest('.opt'); if (!b) return;
     if (g === multi) { b.classList.toggle('on'); syncB(); return; }
     g.querySelectorAll('.opt').forEach(x => x.classList.toggle('on', x === b));
     const v = b.dataset.v; cfg[g.dataset.g] = isNaN(v) ? v : +v;
-    if (g.dataset.g === 'dist') showSetup();
+    if (g.dataset.g === 'dist' || g.dataset.g === 'mode') showSetup();
   }));
   $('mGo').onclick = () => { hideModal(); if (onl) createOnline(); else newGame(); };
   $('mRules').onclick = () => showRules(showSetup);
-  if ($('mBackGame')) $('mBackGame').onclick = () => { hideModal(); if (G && G.over) { shownEnd = null; showEnd(); } };
+  if ($('mBackGame')) $('mBackGame').onclick = () => { hideModal(); if (G && G.over) showEndModal(); };
 }
+
 function showHelp() {
   const g = G, me = g && g.players[ME];
   const on = POWERS.filter(x => isOn(x.k));
@@ -1477,23 +1635,23 @@ function showRules(back) {
       <li>La partie s’arrête dès qu’un joueur a posé toutes ses tuiles : il gagne +25 + la valeur des tuiles restantes des adversaires.</li>
       <li>Ou quand la pioche est vide et que plus personne ne peut jouer : celui qui a le moins de points en main marque la différence.</li>
       <li>Le joueur qui a le plus gros score gagne. Bouton « Revanche » pour rejouer.</li></ul>
-    <h3>Bonus spéciaux</h3><p>À choisir dans « Nouvelle partie ». Chaque joueur reçoit tous les bonus cochés dès le départ. Ils s’activent avec les boutons ronds au-dessus de « Conseil », pendant votre tour, avant de poser.</p><ul>
+    <h3>Bonus spéciaux</h3><p>À choisir dans « Nouvelle partie » (type « ✨ Avec bonus »). Deux façons de les obtenir :<br>• <b>Sur les dominos</b> (par défaut) : certains dominos cachent un bonus (icône au centre). Le poser vous <b>donne le pouvoir</b>, que vous activez quand vous voulez avec son bouton rond (au-dessus de « Conseil »).<br>• <b>Dispo tout le temps</b> : chaque joueur a tous les bonus dès le départ, à activer avec les boutons ronds au-dessus de « Conseil ».<br>En partie « 🎮 Normale », il n’y a aucun bonus.</p><ul>
       <li><b>🎁 Donner</b> : offrez une de vos tuiles à un adversaire.</li>
       <li><b>🔄 Échanger</b> : remettez une tuile dans la pioche et tirez-en une autre, sans pénalité.</li>
       <li><b>✖2 Double</b> : votre prochaine tuile posée rapporte le double, bonus compris.</li>
       <li><b>👀 Espion</b> : voyez les tuiles de vos adversaires pendant votre tour.</li>
       <li><b>🔒 Gel de la pioche</b> : à son prochain tour, l’adversaire ne peut pas piocher ; s’il ne peut rien poser, il doit passer (−10).</li>
       <li><b>🃏 Joker</b> : un coin de votre prochaine tuile peut valoir n’importe quel nombre (il apparaît souligné en orange).</li>
-      <li><b>🔁 Reprise</b> (chaque joueur en reçoit 0, 1 ou 2 selon le réglage de la partie, aucune par défaut) : juste après avoir posé, tant que l’adversaire n’a pas joué, reprenez votre tuile (vous perdez ses points) et rejouez.</li>
+      <li><b>🔁 Reprise</b> (réglable Oui/Non, aussi en partie Normale ; si Oui, sur tous vos coups) : juste après avoir posé, tant que l’adversaire n’a pas joué, reprenez votre tuile (vous perdez ses points) et rejouez.</li>
       <li><b>🎯 Vol</b> : trois tuiles d’un adversaire sont révélées au hasard ; prenez celle de votre choix.</li>
       <li><b>💣 Bombe</b> : faites exploser une tuile en bordure du plateau ; celui qui l’a posée perd ses points, et elle retourne dans la pioche.</li>
       <li><b>⚡ Rafale</b> : posez deux tuiles dans le même tour.</li>
       <li><b>🎲 Coffre surprise</b> (automatique) : compléter un hexagone fait gagner un bonus au hasard.</li>
-      <li>Les ordinateurs utilisent aussi « Donner », « Double » et « Gel de la pioche »… méfiez-vous !</li></ul>
+      <li>Les ordinateurs jouent aussi leurs bonus… méfiez-vous !</li></ul>
     <h3>Commandes</h3><ul>
       <li><b>Poser :</b> faites glisser une tuile de votre main vers le plateau. Près d’un bord où elle peut se connecter, elle s’y aimante et pivote dans une orientation valide ; elle n’est posée qu’au lâcher (R ou molette pendant le glisser pour une autre orientation).</li>
       <li><b>Tourner</b> une tuile de votre main : touchez-la.</li>
-      <li><b>Indice</b> : 2 par partie. Il montre où l’une de vos tuiles peut aller, ou vous dit qu’aucune ne peut être posée.</li>
+      <li><b>Indice</b> : montre où l’une de vos tuiles peut aller (nombre réglable par partie).</li>
       <li>Glissez le plateau pour le déplacer, molette ou pincement pour zoomer.</li></ul>
     <div class="mfoot"><button class="btn primary" id="mBack">${back ? 'Retour' : 'Fermer'}</button></div>`);
   $('mBack').onclick = () => back ? back() : hideModal();
@@ -1533,7 +1691,7 @@ function load(st) {
   G.undoSnap = st.undo ? { ...st.undo, tile: U(st.undo.tile) } : null;
   delete G.undo;
   rebuildVmap();
-  Object.assign(cfg, st.cfg); cfg.dist = 'start';
+  Object.assign(cfg, st.cfg);
 }
 function sync() {
   if (!ONLINE || !G || !Net || TRAINING) return;
@@ -1581,16 +1739,16 @@ function applyRemote(val) {
     render();
     if (newPop) { ensureVisible(newPop.c, newPop.r); pop(newPop.c, newPop.r, newPop.txt, newPop.sub); }
     if (G.bn && G.bn.id > seenBn) { seenBn = G.bn.id; bannerShow(G.bn.t); }
-    (G.pev || []).filter(e => e.id > seenPev && e.seat !== ME).forEach(announce); seenPev = G.pevId || 0;
+    (G.pev || []).filter(e => e.id > seenPev && e.seat !== ME).forEach(e => { if (e.k === 'bomb' && e.kind === 'use' && e.d.c != null) { ensureVisible(e.d.c, e.d.r); boomFx(e.d.c, e.d.r, e.d.pts, e.d.owner === ME); } if (advOn()) announce(e); }); seenPev = G.pevId || 0;
   }
   if (G.over && G.result && shownEnd !== G.gid) setTimeout(showEnd, fresh ? 0 : 900);
   if (!wasMyTurn && humanTurn()) notifyTurn();
 }
 function notifyTurn() {
   try { navigator.vibrate && navigator.vibrate(180); } catch (e) {}
-  if (document.hidden) document.title = '🔔 À vous ! · Triominos';
+  if (document.hidden) document.title = '🔔 À vous ! · Triolet';
 }
-document.addEventListener('visibilitychange', () => { if (!document.hidden) document.title = 'Triominos'; });
+document.addEventListener('visibilitychange', () => { if (!document.hidden) document.title = 'Triolet'; });
 function knownFriend() {
   const s = (G && ONLINE) ? G.players.map(p => ({ uid: p.uid, name: p.name })) : lastSeats;
   return s && s.length === 2 ? s.find(x => x.uid !== myUid) : null;
@@ -1608,7 +1766,7 @@ function createOnline() {
     .then(ok => { if (!ok && lastRemote) applyRemote(lastRemote); }).catch(netError);
 }
 function joinOnline(val) {
-  Object.assign(cfg, val.cfg || {}); cfg.dist = 'start';
+  Object.assign(cfg, val.cfg || {});
   SEATS = [val.host, { uid: myUid, name: myName }]; ME = 1; ONLINE = true; gameVer = val.ver;
   newGame(null);
 }
@@ -1666,7 +1824,7 @@ function showLogin(err) {
   const fixedPw = !!(window.FIREBASE_CONFIG && window.FIREBASE_CONFIG.motDePasse);
   showModal(`<div class="lobby"><div class="hero"><svg width="150" height="70" viewBox="0 0 150 70">
       ${triSVG([[40, 4], [74, 64], [6, 64]], [5, 5, 5], { fs: 15 })}${triSVG([[40, 4], [108, 4], [74, 64]], [5, 5, 3], { fs: 15 })}${triSVG([[108, 4], [142, 64], [74, 64]], [3, 5, 1], { fs: 15 })}
-    </svg></div><h2>Triominos</h2><p>Partie privée entre amis.</p></div>
+    </svg></div><h2>Triolet</h2><p>Partie privée entre amis.</p></div>
     <form id="lForm" style="display:flex;flex-direction:column;gap:10px;margin-top:12px">
       <label style="font-size:14px">Votre prénom<input id="lName" class="inp" maxlength="14" autocomplete="given-name" value="${(lsGet('name') || '').replace(/"/g, '')}"></label>
       ${fixedPw ? '' : '<label style="font-size:14px">Mot de passe de la partie<input id="lPw" class="inp" type="password" autocomplete="current-password"></label><p style="font-size:12.5px;opacity:.7;margin:0">Le même que votre ami, au caractère près. Il reste enregistré sur cet appareil.</p>'}
@@ -1761,11 +1919,11 @@ function MockNet(uid) {
 let installEvt = null;
 const isStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
 addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; });
-addEventListener('appinstalled', () => { installEvt = null; toast('📲 Triominos est installé !'); });
+addEventListener('appinstalled', () => { installEvt = null; toast('📲 Triolet est installé !'); });
 function installApp() {
   if (installEvt) { installEvt.prompt(); installEvt.userChoice.finally(() => { installEvt = null; }); return; }
   const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
-  showModal(`<button class="mclose" id="mX">✕</button><h2>📲 Installer Triominos</h2>
+  showModal(`<button class="mclose" id="mX">✕</button><h2>📲 Installer Triolet</h2>
     ${ios ? '<p>Dans Safari : touchez le bouton <b>Partager</b> (carré avec une flèche), puis <b>Sur l’écran d’accueil</b>.</p>'
           : '<p>Dans Chrome : menu <b>⋮</b> en haut à droite, puis <b>Installer l’application</b> (ou <b>Ajouter à l’écran d’accueil</b>).</p>'}
     <p style="opacity:.75;font-size:13.5px">Le jeu s’ouvrira ensuite en plein écran, comme une vraie application.</p>`);
