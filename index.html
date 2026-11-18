@@ -503,7 +503,7 @@ function placeMove(pi, ti, m) {
   // --- bonus : poser une tuile ✨ (ou compléter un hexagone) REMPLIT votre réserve ; vous activez le pouvoir quand vous voulez via les boutons ---
   const grant = (w, hex) => {
     p.powers[w.k] = (p.powers[w.k] || 0) + 1;
-    addLog(`${hex ? '🎲 Coffre surprise' : '✨ Bonus'} : ${p.name} ${vous(p) ? 'gagnez' : 'gagne'} ${w.ic} ${w.l}`);
+    addLog(`${hex ? '🎲 Coffre surprise' : '✨ Bonus'} : ${p.name} ${vous(p) ? 'gagnez' : 'gagne'} ${w.ic} ${w.l}`, null, pi !== ME);
     pevent(pi, 'gain', w.k, { via: hex ? 'chest' : 'tile' }); // carte explicative (vous toujours ; adversaire si l'option est activée)
   };
   if (withBonus() && cfg.dist === 'tiles' && placedTile.bk) {
@@ -1221,12 +1221,12 @@ function renderActions() {
   else st.innerHTML = `<b>À vous !</b>${G.draws ? ` Pioches : ${G.draws}/3` : ''}`;
 }
 // pub : texte partagé (journal) ; priv : version privée affichée seulement au joueur concerné
-function addLog(pub, priv) {
+function addLog(pub, priv, advGated) {
   if (!G) return;
   G.logId = (G.logId || 0) + 1;
-  G.log.push({ id: G.logId, t: ONLINE ? pub : (priv || pub) }); if (G.log.length > 30) G.log.shift();
+  G.log.push({ id: G.logId, t: ONLINE ? pub : (priv || pub), adv: advGated ? 1 : 0 }); if (G.log.length > 30) G.log.shift();
   seenLog = G.logId;
-  toast(priv || pub);
+  if (!advGated || advOn()) toast(priv || pub); // un gain adverse caché ne déclenche pas de toast
 }
 // ---- cartes d'événement : explique clairement ce que fait un bonus adverse ----
 const EVQ = []; let evShown = null, evTimer = null, seenPev = 0;
@@ -1236,7 +1236,7 @@ function pevent(seat, kind, k, d) {
   G.pevId = (G.pevId || 0) + 1;
   const e = { id: G.pevId, seat, kind, k, d: d || {} };
   G.pev = (G.pev || []).concat(e).slice(-10); seenPev = G.pevId;
-  if (seat !== ME) { if (advOn()) announce(e); } // adversaire : carte seulement si l'option est activée
+  if (seat !== ME) { if (advOn() || e.kind === 'use') announce(e); } // adversaire : un USAGE est toujours montré ; un GAIN seulement si l'option est activée
   else if (kind === 'spy' || kind === 'gain') announce(e); // votre espion, ou un bonus que vous venez de gagner
 }
 function evText(e) {
@@ -1262,7 +1262,7 @@ function evText(e) {
     }[e.k] || w.tip;
     return { ic: w.ic,
       ti: d.via === 'chest' ? `${n} ouvre le coffre surprise` : `${n} a posé une tuile bonus`,
-      tx: `${d.via === 'chest' ? `En complétant un hexagone, ${n}` : `En posant cette tuile ✨, ${n}`} gagne <b>${w.ic} ${w.l}</b> et le garde en réserve (icône sous son score).<br>Quand ${n} l’utilisera : ${eff}` };
+      tx: `${d.via === 'chest' ? `En complétant un hexagone, ${n}` : `En posant cette tuile ✨, ${n}`} gagne <b>${w.ic} ${w.l}</b> et le garde en réserve pour plus tard.<br>Quand ${n} l’utilisera : ${eff}` };
   }
   switch (e.k) {
     case 'gift': return { ic: '🎁', ti: `${n} offre une tuile`, tx: d.to === ME ? `${n} vous donne la tuile <b>${d.t}</b> : elle s’ajoute à votre main (une tuile de plus à poser).` : `${n} donne la tuile <b>${d.t}</b> à ${nm(d.to)}.` };
@@ -1733,13 +1733,13 @@ function applyRemote(val) {
     firstLoad = false;
     render();
   } else {
-    G.log.filter(x => x.id > seenLog).forEach(x => toast(x.t)); seenLog = G.logId || 0;
+    G.log.filter(x => x.id > seenLog && (!x.adv || advOn())).forEach(x => toast(x.t)); seenLog = G.logId || 0;
     const newPop = G.pop && G.pop.id > seenPop ? G.pop : null;
     if (newPop) { seenPop = newPop.id; freshK = K(newPop.c, newPop.r); }
     render();
     if (newPop) { ensureVisible(newPop.c, newPop.r); pop(newPop.c, newPop.r, newPop.txt, newPop.sub); }
     if (G.bn && G.bn.id > seenBn) { seenBn = G.bn.id; bannerShow(G.bn.t); }
-    (G.pev || []).filter(e => e.id > seenPev && e.seat !== ME).forEach(e => { if (e.k === 'bomb' && e.kind === 'use' && e.d.c != null) { ensureVisible(e.d.c, e.d.r); boomFx(e.d.c, e.d.r, e.d.pts, e.d.owner === ME); } if (advOn()) announce(e); }); seenPev = G.pevId || 0;
+    (G.pev || []).filter(e => e.id > seenPev && e.seat !== ME).forEach(e => { if (e.k === 'bomb' && e.kind === 'use' && e.d.c != null) { ensureVisible(e.d.c, e.d.r); boomFx(e.d.c, e.d.r, e.d.pts, e.d.owner === ME); } if (advOn() || e.kind === 'use') announce(e); }); seenPev = G.pevId || 0;
   }
   if (G.over && G.result && shownEnd !== G.gid) setTimeout(showEnd, fresh ? 0 : 900);
   if (!wasMyTurn && humanTurn()) notifyTurn();
