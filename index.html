@@ -106,6 +106,12 @@ svg text{font-family:'Fredoka',system-ui,sans-serif;font-weight:700;text-anchor:
 @keyframes blink{50%{opacity:.3}}
 .badge2{background:var(--gold);color:#2a1d07;border-radius:6px;padding:0 5px;font-size:11px;font-weight:700;margin-left:3px}
 .crown{margin-left:3px;filter:drop-shadow(0 1px 1px rgba(0,0,0,.4))}
+.statCard{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:9px 12px;margin-top:8px}
+.statHead{font-size:15px;margin-bottom:6px}
+.statGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;text-align:center}
+.statGrid b{display:block;font-size:17px}
+.statGrid small{font-size:11px;opacity:.7}
+#me,#opps .opp{cursor:pointer}
 .rivalry{margin-top:12px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:9px 12px}
 .rivTitle{font-weight:700;font-size:13.5px;margin-bottom:5px;opacity:.9}
 .rivRow{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:13.5px;padding:2px 0}
@@ -219,6 +225,7 @@ table.res tr.win td{color:var(--gold)}
 .stealT:hover{transform:translateY(-3px);border-color:var(--gold)}
 .stealT svg{width:78px;height:auto;filter:drop-shadow(0 2px 2px rgba(0,0,0,.4))}
 .stealT small{font-size:11.5px;opacity:.85}
+.stealT.stealNone{justify-content:center;min-width:62px;border-style:dashed;opacity:.85}
 .stealT.bkt .body{fill:#efe6ff;stroke:#efe6ff}
 .stealT.bkt .hlp{stroke:#7c3aed;stroke-width:10}
 #evCard{position:absolute;left:50%;bottom:92px;transform:translateX(-50%);width:min(340px,calc(100% - 40px));background:#17395c;border:2px solid var(--gold);border-radius:18px;padding:16px 18px 14px;box-shadow:0 18px 50px rgba(0,0,0,.55);z-index:20;text-align:center;cursor:pointer;animation:evCardIn .35s cubic-bezier(.3,1.4,.5,1)}
@@ -384,7 +391,7 @@ const POWERS = [
 const PW = Object.fromEntries(POWERS.map(x => [x.k, x]));
 /* ---------- Sons & vibrations : vrai moteur WebAudio (enveloppes, filtres, réverb) ---------- */
 const FX = { ac: null, master: null, verb: null, noiseBuf: null };
-const fxOn = () => cfg.fx !== 'non';
+const fxOn = () => { try { return lsGet('fx') !== 'non'; } catch (e) { return true; } }; // préférence propre à cet appareil/joueur
 function ensureAudio() {
   if (FX.ac) { if (FX.ac.state === 'suspended') FX.ac.resume(); return FX.ac; }
   const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null;
@@ -457,6 +464,10 @@ function recordResult() {
   const ff = G.result.ff;
   const alive = ff != null ? G.players.filter((p, i) => i !== ff) : G.players;
   const top = Math.max(...alive.map(p => p.score)), champs = alive.filter(p => p.score === top);
+  s.games = (s.games || 0) + 1;
+  s.played = s.played || {}; s.pts = s.pts || {}; s.best = s.best || {};
+  G.players.forEach(p => { const id = PID(p); s.played[id] = (s.played[id] || 0) + 1; s.pts[id] = (s.pts[id] || 0) + Math.max(0, p.score); if (p.score > (s.best[id] || 0)) s.best[id] = p.score; });
+  if (champs.length !== 1) s.ties = (s.ties || 0) + 1;
   if (champs.length === 1) {
     const id = PID(champs[0]);
     s.wins[id] = (s.wins[id] || 0) + 1;
@@ -475,7 +486,7 @@ const advOn = () => cfg.adv !== 'non';
 const undoOn = () => cfg.undo === 'oui';
 const isOn = k => !!(PW[k] && (PW[k].fixed ? undoOn() : (withBonus() && cfg.bonus.includes(k))));
 function comboMult(p) { if (cfg.combo !== 'oui') return 1; const n = p.placeStreak || 0; return n >= 3 ? 2 : n >= 2 ? 1.5 : 1; }
-let cfg = { opp: 1, level: 'expert', mode: 'bonus', dist: 'tiles', btiles: 8, uses: 1, hints: 2, undo: 'non', adv: 'oui', combo: 'non', fx: 'oui', bonus: POWERS.filter(x => !x.fixed).map(x => x.k) };
+let cfg = { opp: 1, level: 'expert', mode: 'bonus', dist: 'tiles', btiles: 8, uses: 1, hints: 2, undo: 'non', adv: 'oui', combo: 'non', bonus: POWERS.filter(x => !x.fixed).map(x => x.k) };
 let G = null, sel = null, ghost = null, targetMap = new Map(), freshK = null, aiTimer = null;
 // ONLINE : partie en ligne ; ME : siège du joueur local (0 hors ligne)
 let ONLINE = false, ME = 0, SEATS = null;
@@ -746,6 +757,11 @@ function startSteal(me, q) {
   const picks = shuffle(q.hand.slice()).slice(0, 3);
   const take = t => {
     stealPick = null; G.mode = null;
+    if (!t) { // aucune tuile ne vous intéresse : le bonus est quand même consommé
+      pevent(G.players.indexOf(me), 'use', 'steal', { from: G.players.indexOf(q), none: 1 });
+      addLog(`🎯 ${me.name} renonce à voler une tuile à ${q.name}`, vous(me) ? `🎯 Vous ne prenez aucune tuile à ${q.name} (bonus consommé)` : null);
+      render(); maybeAfter(); return;
+    }
     const i = q.hand.indexOf(t);
     if (i >= 0) {
       q.hand.splice(i, 1); t.rot = 0; t.fav = false; keepLocal(t); me.hand.push(t); drawnT = t;
@@ -1169,11 +1185,40 @@ function showBonus() {
   $('mX').onclick = hideModal;
   $('modal').querySelectorAll('[data-use]').forEach(b => b.onclick = () => { hideModal(); usePower(b.dataset.use); });
 }
+function showStats() {
+  if (!G) return;
+  const S = loadStats(), ids = G.players.map(PID);
+  const live = Object.fromEntries(G.players.map(p => [PID(p), p.name]));
+  const nm = id => (live[id] || S.names[id] || '?');
+  const row = id => {
+    const w = S.wins[id] || 0, pl = (S.played && S.played[id]) || 0, rate = pl ? Math.round(w * 100 / pl) : 0;
+    const avg = pl ? Math.round(((S.pts && S.pts[id]) || 0) / pl) : 0, best = (S.best && S.best[id]) || 0;
+    const st = S.streakId === id ? S.streakN || 0 : 0, sw = (S.season && S.season[id]) || 0;
+    return `<div class="statCard">
+      <div class="statHead">${S.crown === id ? '👑 ' : ''}<b>${nm(id)}</b>${ids[ME] === id ? ' <span style="opacity:.6">(vous)</span>' : ''}</div>
+      <div class="statGrid">
+        <div><b>${w}</b><small>victoires</small></div>
+        <div><b>${rate}%</b><small>de victoires</small></div>
+        <div><b>${st >= 1 ? '🔥' + st : '—'}</b><small>série en cours</small></div>
+        <div><b>${sw}/${SEASON_TARGET}</b><small>saison ${S.seasonNo || 1}</small></div>
+        <div><b>${avg}</b><small>pts / partie</small></div>
+        <div><b>${best}</b><small>record</small></div>
+      </div></div>`;
+  };
+  const crown = S.crown ? `👑 Champion en titre : <b>${nm(S.crown)}</b>` : `👑 Pas encore de champion : le premier à ${SEASON_TARGET} victoires dans la saison prend la couronne.`;
+  showModal(`<button class="mclose" id="mX">✕</button><h2>📊 Statistiques</h2>
+    <p style="margin:0 0 8px;opacity:.75;font-size:13px">${ONLINE ? 'Vos parties en ligne' : 'Vos parties d’entraînement'} · ${S.games || 0} partie${(S.games || 0) > 1 ? 's' : ''} jouée${(S.games || 0) > 1 ? 's' : ''}${S.ties ? ` · ${S.ties} égalité${S.ties > 1 ? 's' : ''}` : ''}</p>
+    ${ids.filter((v, i, a) => a.indexOf(v) === i).map(row).join('')}
+    <p style="font-size:13px;opacity:.85;margin-top:10px">${crown}</p>`);
+  $('mX').onclick = hideModal;
+}
 function showMenu() {
   if (!G) return ONLINE || (Net && !TRAINING) ? showLobby() : showSetup();
   showModal(`<button class="mclose" id="mX">✕</button><h2>Triolet</h2>
     <p style="margin:0;opacity:.75">Pioche : ${G.pool.length} tuiles · Vous : ${meP().score} pts${ONLINE ? ' · en ligne avec ' + G.players.filter(p => p !== meP()).map(p => p.name).join(', ') : ''}</p>
     <div class="menuList">
+      <button class="btn" id="mmFx">${fxOn() ? '🔊 Sons & vibrations : activés' : '🔇 Sons & vibrations : coupés'}</button>
+      <button class="btn" id="mmStats">📊 Statistiques</button>
       <button class="btn" id="mmHelp">❓ Comment marquer des points</button>
       <button class="btn" id="mmOpts">⚙️ Options de cette partie</button>
       <button class="btn" id="mmRules">📖 Règles complètes</button>
@@ -1184,7 +1229,8 @@ function showMenu() {
       ${ONLINE || (TRAINING && Net) ? `<button class="btn" id="mmOnline">${TRAINING ? '🌐 Revenir au jeu en ligne' : '🔑 Changer de prénom ou de mot de passe'}</button>` : ''}
     ${G.log.length ? `<h3>Derniers coups</h3><div class="histo">${G.log.slice(-8).reverse().map(x => `<div>${x.t}</div>`).join('')}</div>` : ''}`);
   $('mX').onclick = hideModal;
-  $('mmHelp').onclick = showHelp; $('mmOpts').onclick = showOptions;
+  $('mmFx').onclick = () => { lsSet('fx', fxOn() ? 'non' : 'oui'); if (fxOn()) { sfx('gain'); buzz(20); } $('mmFx').textContent = fxOn() ? '🔊 Sons & vibrations : activés' : '🔇 Sons & vibrations : coupés'; };
+  $('mmStats').onclick = showStats; $('mmHelp').onclick = showHelp; $('mmOpts').onclick = showOptions;
   if ($('mmQuit')) $('mmQuit').onclick = confirmForfeit;
   $('mmRules').onclick = () => showRules(showMenu); $('mmNew').onclick = () => (ONLINE && !G.over) ? confirmAbandon() : showSetup();
   if ($('mmInstall')) $('mmInstall').onclick = installApp;
@@ -1344,8 +1390,9 @@ function renderActions() {
     A.innerHTML = `<button class="btn primary ${ONLINE ? '' : 'undoBtn'}" id="aUndo" style="--t:${UNDO_MS}ms">🔁 Reprendre ma tuile (−${G.undoSnap.pts})</button>`;
     $('aUndo').onclick = doUndo;
   } else if (my && G.mode === 'steal' && stealPick) {
-    A.innerHTML = `<div class="stealBar">${stealPick.picks.map((t, j) => `<button class="stealT ${t.bk ? 'bkt' : ''}" data-j="${j}"><svg viewBox="0 0 74 70">${triSVG([[37, 4], [72, 66], [2, 66]], t, { fs: 17, ni: .47, bk: t.bk })}</svg>${t.bk ? `<small>${PW[t.bk].ic} ${PW[t.bk].l}</small>` : ''}</button>`).join('')}</div>`;
-    A.querySelectorAll('.stealT').forEach(b => b.onclick = () => stealPick.take(stealPick.picks[+b.dataset.j]));
+    A.innerHTML = `<div class="stealBar">${stealPick.picks.map((t, j) => `<button class="stealT ${t.bk ? 'bkt' : ''}" data-j="${j}"><svg viewBox="0 0 74 70">${triSVG([[37, 4], [72, 66], [2, 66]], t, { fs: 17, ni: .47, bk: t.bk })}</svg>${t.bk ? `<small>${PW[t.bk].ic} ${PW[t.bk].l}</small>` : ''}</button>`).join('')}<button class="stealT stealNone" id="aStealNone"><span style="font-size:26px">🙅</span><small>Aucune</small></button></div>`;
+    A.querySelectorAll('.stealT[data-j]').forEach(b => b.onclick = () => stealPick.take(stealPick.picks[+b.dataset.j]));
+    $('aStealNone').onclick = () => stealPick.take(null);
   } else if (my && G.mode) {
     A.innerHTML = `<button class="btn" id="aCancelMode">${G.afterBonus ? 'Passer ce bonus' : '✕ Annuler'}</button>`;
     $('aCancelMode').onclick = () => { G.mode = null; G.msg = ''; if (G.afterBonus) maybeAfter(); else render(); };
@@ -1369,7 +1416,7 @@ function renderActions() {
   if (G.over) st.textContent = 'Fin de la partie…';
   else if (myUndo) st.innerHTML = ONLINE ? `Vous pouvez <b>reprendre</b> votre tuile tant que ${cur().name} n’a pas joué` : 'Vous pouvez encore <b>reprendre</b> votre tuile…';
   else if (!my) st.innerHTML = `Au tour de <b>${cur().name}</b>${ONLINE && !PRESENCE[cur().uid] ? ' <small>(hors ligne)</small>' : ''}`;
-  else if (G.mode === 'steal' && stealPick) st.innerHTML = `🎯 Prenez une tuile de ${stealPick.q.name} · déplacez ou zoomez le plateau pour choisir`;
+  else if (G.mode === 'steal' && stealPick) st.innerHTML = `🎯 Prenez une tuile de ${stealPick.q.name}, ou « Aucune » si rien ne vous intéresse`;
   else if (G.mode) st.innerHTML = G.msg || (G.mode === 'gift' ? '🎁 Touchez la tuile à <b>offrir</b>' : G.mode === 'swap' ? '🔄 Touchez la tuile à <b>échanger</b>' : '💣 Touchez une tuile en bordure (<b>contour rouge</b>)');
   else if (ghost) {
     const m = ghost.list[ghost.i];
@@ -1435,7 +1482,8 @@ function evText(e) {
     case 'spy': return { ic: '👀', ti: `${n} vous espionne`, tx: `${n} voit <b>toutes vos tuiles</b> pendant ce tour.` };
     case 'freeze': return { ic: '🔒', ti: `${n} gèle la pioche`, tx: d.target === ME ? `À votre prochain tour, vous <b>ne pourrez pas piocher</b>. Si aucune de vos tuiles ne se pose, vous devrez passer (−10).` : `${nm(d.target)} ne pourra pas piocher à son prochain tour.` };
     case 'joker': return { ic: '🃏', ti: `${n} active un Joker`, tx: `Un coin de la prochaine tuile de ${n} pourra valoir <b>n’importe quel nombre</b>.` };
-    case 'steal': return { ic: '🎯', ti: `${n} vole une tuile`, tx: d.from === ME ? `${n} vous prend la tuile <b>${d.t}</b> : vous avez une tuile de moins.` : `${n} prend une tuile au hasard à ${nm(d.from)}.` };
+    case 'steal': if (d.none) return { ic: '🎯', ti: `${n} renonce au vol`, tx: `${n} a regardé 3 de ${d.from === ME ? 'vos tuiles' : 'les tuiles de ' + nm(d.from)} mais n’en a pris aucune. Le bonus est consommé.` };
+      return { ic: '🎯', ti: `${n} vole une tuile`, tx: d.from === ME ? `${n} vous prend la tuile <b>${d.t}</b> : vous avez une tuile de moins.` : `${n} prend une tuile au hasard à ${nm(d.from)}.` };
     case 'bomb': return { ic: '💣', ti: `${n} fait exploser une tuile`, tx: `La tuile <b>${d.t}</b> est retirée du plateau et retourne dans la pioche : ${d.owner === ME ? 'vous perdez' : nm(d.owner) + ' perd'} <b>${d.pts} points</b>.` };
     case 'rafale': return { ic: '⚡', ti: `${n} active Rafale`, tx: `${n} va poser <b>deux tuiles</b> pendant ce tour.` };
     case 'undo': return { ic: '🔁', ti: `${n} reprend sa tuile`, tx: `${n} retire la tuile <b>${d.t}</b> qu’il venait de poser (−${d.pts} pts) et rejoue son tour.` };
@@ -1594,6 +1642,8 @@ svg.addEventListener('pointercancel', endPtr);
 svg.addEventListener('wheel', e => { e.preventDefault(); const p = rel(e); zoomAt(p.x, p.y, Math.exp(-e.deltaY * .0015), false); }, { passive: false });
 $('fitBtn').onclick = () => fitView(true);
 $('menuBtn').onclick = showMenu;
+$('me').onclick = showStats;
+$('opps').addEventListener('click', e => { if (e.target.closest('.opp')) showStats(); });
 $('pwBtns').addEventListener('click', e => { const b = e.target.closest('[data-p]'); if (b) showPower(b.dataset.p); });
 $('reactRow').innerHTML = REACTS.map(e => `<button data-r="${e}" aria-label="Réagir ${e}">${e}</button>`).join('');
 $('reactBtn').onclick = toggleReacts;
@@ -1755,7 +1805,6 @@ function showSetup() {
     <h3>🔁 Reprise</h3>${seg('undo', [['non', 'Non'], ['oui', 'Oui, sur tous vos coups']])}
     <h3>🔥 Combos</h3>${seg('combo', [['non', 'Non'], ['oui', 'Oui']])}
     <p style="font-size:12.5px;opacity:.7;margin:4px 0 0">Poser plusieurs tuiles d’affilée sans piocher fait monter un multiplicateur (×1,5 puis ×2).</p>
-    <h3>🔊 Sons & vibrations</h3>${seg('fx', [['oui', 'Activés'], ['non', 'Coupés']])}
     <div class="mfoot">${onl && G ? '<button class="btn ghostbtn" id="mBackGame">Retour</button>' : ''}<button class="btn ghostbtn" id="mRules">Règles</button><button class="btn primary" id="mGo">${onl ? (friend ? 'Lancer la partie' : 'Créer la partie') : 'Jouer'}</button></div>`);
   const multi = document.querySelector('.opts.multi');
   const syncB = () => { if (multi) cfg.bonus = [...multi.querySelectorAll('.opt.on')].map(x => x.dataset.v); };
@@ -1914,7 +1963,15 @@ function applyRemote(val) {
   ONLINE = true; ME = seat; lastSeats = st.players.map(p => ({ uid: p.uid, name: p.name }));
   load(st);
   lastSynced = ser();
-  sel = null; ghost = null; targetMap = new Map();
+  // une mise à jour (ex. réaction de l'adversaire) peut arriver pendant que vous faites glisser une tuile :
+  // si c'est toujours votre tour, on garde le glisser-déposer intact ; sinon la tuile revient dans votre main.
+  if (hd && hd.active && humanTurn() && !fresh && cur().hand[hd.i]) {
+    sel = hd.i; const gk = ghost && ghost.k, gi = ghost ? ghost.i : 0; computeTargets();
+    ghost = gk && targetMap.has(gk) ? { k: gk, list: targetMap.get(gk), i: Math.min(gi, targetMap.get(gk).length - 1) } : null;
+  } else {
+    if (hd && hd.active) { hd = null; if (dragEl) { dragEl.remove(); dragEl = null; } document.body.classList.remove('dragmode'); }
+    sel = null; ghost = null; targetMap = new Map();
+  }
   if (fresh || firstLoad) {
     if (fresh) shownEnd = null;
     hideModal(); view = { x: 0, y: 0, k: 1 }; fitView(false);
