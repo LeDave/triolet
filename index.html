@@ -60,6 +60,7 @@ svg text{font-family:'Fredoka',system-ui,sans-serif;font-weight:700;text-anchor:
 @keyframes rise{0%{opacity:0;transform:translateY(8px)}15%{opacity:1}75%{opacity:1}100%{opacity:0;transform:translateY(-46px)}}
 
 /* ---- boutons flottants ---- */
+[hidden]{display:none!important}
 .fab{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;width:52px;height:52px;border-radius:50%;border:0;cursor:pointer;font-family:inherit;color:var(--ink);background:rgba(12,34,60,.78);backdrop-filter:blur(6px);box-shadow:0 3px 10px rgba(0,0,0,.35);font-size:22px;line-height:1;transition:transform .12s,opacity .15s}
 .fab:active:not(:disabled){transform:scale(.93)}
 .fab:disabled{opacity:.35;cursor:not-allowed}
@@ -104,6 +105,19 @@ svg text{font-family:'Fredoka',system-ui,sans-serif;font-weight:700;text-anchor:
 .think{display:inline-block;animation:blink 1s infinite}
 @keyframes blink{50%{opacity:.3}}
 .badge2{background:var(--gold);color:#2a1d07;border-radius:6px;padding:0 5px;font-size:11px;font-weight:700;margin-left:3px}
+.crown{margin-left:3px;filter:drop-shadow(0 1px 1px rgba(0,0,0,.4))}
+.rivalry{margin-top:12px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:9px 12px}
+.rivTitle{font-weight:700;font-size:13.5px;margin-bottom:5px;opacity:.9}
+.rivRow{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:13.5px;padding:2px 0}
+.rivRow+.rivRow{border-top:1px solid rgba(255,255,255,.06)}
+.rivStreak{margin-top:6px;font-size:12.5px;color:#ff9a4a;font-weight:600}
+.flame{margin-left:2px;font-size:11px;font-weight:800;color:#ff7a1a;background:rgba(255,122,26,.16);border-radius:6px;padding:0 4px}
+.reactFloat{position:absolute;bottom:88px;font-size:46px;pointer-events:none;z-index:40;animation:reactPop 1.7s cubic-bezier(.3,1.5,.4,1) forwards;filter:drop-shadow(0 3px 4px rgba(0,0,0,.35))}
+@keyframes reactPop{0%{transform:translateY(18px) scale(.2);opacity:0}18%{transform:translateY(-6px) scale(1.25);opacity:1}30%{transform:translateY(-6px) rotate(-9deg)}46%{transform:rotate(8deg)}62%{transform:rotate(-5deg)}78%{opacity:1}100%{transform:translateY(-120px) scale(1);opacity:0}}
+#reactRow{position:absolute;left:10px;bottom:150px;z-index:30;display:flex;flex-direction:column;gap:5px;background:rgba(20,30,45,.9);padding:7px;border-radius:14px;box-shadow:0 6px 18px rgba(0,0,0,.4)}
+#reactRow button{font-size:24px;background:none;border:0;cursor:pointer;line-height:1;padding:2px;border-radius:8px}
+#reactRow button:active{transform:scale(1.25)}
+#reactBtn{position:absolute;left:10px;bottom:92px;z-index:8}
 .spyhand{display:flex;flex-wrap:wrap;gap:2px;max-width:280px;padding:2px 0}
 .spyhand svg{width:36px;height:auto;display:block;filter:drop-shadow(0 1px 1px rgba(0,0,0,.4))}
 .spyhand svg.bkt .body{fill:#efe6ff;stroke:#efe6ff}
@@ -306,6 +320,8 @@ table.res tr.win td{color:var(--gold)}
   <button class="fab gold" id="menuBtn" title="Menu" aria-label="Menu">☰</button>
   <div id="top"><div id="pill"></div><div id="toasts"></div></div>
   <button class="fab sm" id="fitBtn" title="Recentrer le plateau" aria-label="Recentrer">◎</button>
+  <button class="fab sm" id="reactBtn" title="Envoyer une réaction" aria-label="Réaction">😄</button>
+  <div id="reactRow" hidden></div>
   <div id="banner"></div>
   <div id="evCard" hidden></div>
   <div id="sideR">
@@ -361,14 +377,105 @@ const POWERS = [
   { k: 'steal', ic: '🎯', l: 'Vol', tip: 'Trois tuiles de l’adversaire sont révélées au hasard : prenez celle de votre choix' },
   { k: 'bomb', ic: '💣', l: 'Bombe', tip: 'Retirer une tuile en bordure du plateau ; son poseur perd ses points' },
   { k: 'rafale', ic: '⚡', l: 'Rafale', tip: 'Poser deux tuiles dans le même tour' },
+  { k: 'shield', ic: '🛡️', l: 'Bouclier', tip: 'S’arme et annule tout seul la prochaine Bombe ou le prochain Vol dirigé contre vous' },
+  { k: 'mirror', ic: '🪞', l: 'Miroir', tip: 'Copie le dernier bonus utilisé par un adversaire et l’ajoute à votre réserve' },
   { k: 'chest', ic: '🎲', l: 'Coffre surprise', tip: 'Compléter un hexagone fait gagner un bonus au hasard', passive: true }
 ];
 const PW = Object.fromEntries(POWERS.map(x => [x.k, x]));
+/* ---------- Sons & vibrations : vrai moteur WebAudio (enveloppes, filtres, réverb) ---------- */
+const FX = { ac: null, master: null, verb: null, noiseBuf: null };
+const fxOn = () => cfg.fx !== 'non';
+function ensureAudio() {
+  if (FX.ac) { if (FX.ac.state === 'suspended') FX.ac.resume(); return FX.ac; }
+  const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null;
+  const ac = new AC(); FX.ac = ac;
+  // chaîne maître : gain -> compresseur doux -> sortie
+  const master = ac.createGain(); master.gain.value = .9;
+  const comp = ac.createDynamicsCompressor();
+  comp.threshold.value = -14; comp.knee.value = 24; comp.ratio.value = 3; comp.attack.value = .004; comp.release.value = .18;
+  master.connect(comp); comp.connect(ac.destination); FX.master = master;
+  // réverb : impulsion générée (petite salle chaleureuse)
+  const sr = ac.sampleRate, len = (sr * 1.1) | 0, imp = ac.createBuffer(2, len, sr);
+  for (let ch = 0; ch < 2; ch++) { const d = imp.getChannelData(ch); for (let i = 0; i < len; i++) { const t = i / len; d[i] = (Math.random() * 2 - 1) * Math.pow(1 - t, 2.6); } }
+  const conv = ac.createConvolver(); conv.buffer = imp;
+  const verb = ac.createGain(); verb.gain.value = 1; verb.connect(conv); conv.connect(master); FX.verb = verb;
+  // bruit blanc réutilisable
+  const nlen = sr * 1.2, nb = ac.createBuffer(1, nlen, sr), nd = nb.getChannelData(0);
+  for (let i = 0; i < nlen; i++) nd[i] = Math.random() * 2 - 1;
+  FX.noiseBuf = nb;
+  return ac;
+}
+// une voix : oscillateur (option double détuné) -> filtre passe-bas -> enveloppe douce, avec envoi réverb
+function voice(o) {
+  const ac = FX.ac, t = ac.currentTime + (o.at || 0);
+  const g = ac.createGain(), lp = ac.createLowpass ? ac.createLowpass() : ac.createBiquadFilter();
+  lp.type = 'lowpass'; lp.frequency.value = o.cut || 3200; lp.Q.value = o.q || .6;
+  const peak = o.gain == null ? .22 : o.gain, a = o.a == null ? .006 : o.a, d = o.d || .35;
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(peak, t + a); g.gain.exponentialRampToValueAtTime(.0008, t + a + d);
+  lp.connect(g); g.connect(FX.master);
+  if (o.verb) { const s = ac.createGain(); s.gain.value = o.verb; g.connect(s); s.connect(FX.verb); }
+  const mk = det => { const osc = ac.createOscillator(); osc.type = o.type || 'sine'; osc.frequency.setValueAtTime(o.f, t); if (o.to) osc.frequency.exponentialRampToValueAtTime(o.to, t + (o.glide || a + d)); if (det) osc.detune.value = det; osc.connect(lp); osc.start(t); osc.stop(t + a + d + .05); };
+  mk(0); if (o.fat) mk(o.fat); if (o.partial) voice({ f: o.f * o.partial, at: o.at, gain: peak * .35, a, d: d * .7, type: 'sine', cut: o.cut, verb: o.verb });
+}
+// percussion/explosion : bruit filtré avec balayage
+function noise(o) {
+  const ac = FX.ac, t = ac.currentTime + (o.at || 0);
+  const src = ac.createBufferSource(); src.buffer = FX.noiseBuf; src.loop = true;
+  const f = ac.createBiquadFilter(); f.type = o.type || 'lowpass'; f.frequency.setValueAtTime(o.f || 1200, t); if (o.to) f.frequency.exponentialRampToValueAtTime(o.to, t + (o.dur || .3)); f.Q.value = o.q || 1;
+  const g = ac.createGain(); const peak = o.gain == null ? .18 : o.gain, dur = o.dur || .3;
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(peak, t + (o.a || .004)); g.gain.exponentialRampToValueAtTime(.0008, t + dur);
+  src.connect(f); f.connect(g); g.connect(FX.master);
+  if (o.verb) { const s = ac.createGain(); s.gain.value = o.verb; g.connect(s); s.connect(FX.verb); }
+  src.start(t); src.stop(t + dur + .05);
+}
+const SFX = {
+  place() { noise({ f: 2600, to: 900, dur: .05, gain: .06, type: 'bandpass', q: .8 }); voice({ f: 196, to: 150, type: 'triangle', gain: .16, a: .004, d: .1, cut: 1400 }); },
+  bridge() { [[659, 0], [988, .09]].forEach(([f, at]) => voice({ f, at, type: 'sine', gain: .2, a: .005, d: .5, cut: 4500, partial: 2.01, verb: .28 })); },
+  hex() { [523, 659, 784].forEach((f, i) => voice({ f, at: i * .085, type: 'sine', gain: .2, a: .005, d: .55, cut: 5000, partial: 2.76, verb: .34 })); voice({ f: 1568, at: .22, type: 'sine', gain: .09, d: .5, verb: .4 }); },
+  bomb() { noise({ f: 1600, to: 90, dur: .55, gain: .3, type: 'lowpass', q: .7, verb: .22 }); voice({ f: 150, to: 34, type: 'sine', gain: .32, a: .003, d: .5, glide: .45, cut: 900 }); },
+  win() { [262, 330, 392, 523].forEach(f => voice({ f, type: 'triangle', gain: .17, a: .03, d: 1.1, cut: 3800, partial: 2, verb: .4 })); [523, 659, 784, 1047].forEach((f, i) => voice({ f, at: .22 + i * .1, type: 'sine', gain: .12, a: .005, d: .5, verb: .45 })); },
+  combo() { voice({ f: 440, to: 660, type: 'triangle', gain: .2, a: .004, d: .22, glide: .12, cut: 3000, verb: .25 }); voice({ f: 880, at: .08, type: 'sine', gain: .1, d: .25, verb: .3 }); },
+  react() { voice({ f: 520, to: 880, type: 'sine', gain: .16, a: .004, d: .14, glide: .09, cut: 2600 }); },
+  shield() { [[587, 0], [880, .07]].forEach(([f, at]) => voice({ f, at, to: f * 1.5, type: 'sine', gain: .14, a: .01, d: .5, glide: .4, cut: 5000, verb: .4 })); },
+  gain() { voice({ f: 880, type: 'sine', gain: .18, a: .004, d: .45, cut: 5000, partial: 2.02, verb: .35 }); voice({ f: 1318, at: .06, type: 'sine', gain: .1, d: .4, verb: .4 }); }
+};
+function sfx(type) { if (!fxOn()) return; try { if (!ensureAudio()) return; (SFX[type] || SFX.place)(); } catch (e) {} }
+function buzz(ms) { if (fxOn()) { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {} } }
+
+/* ---------- Rivalité : victoires, séries, saisons ---------- */
+const SEASON_TARGET = 10;
+const PID = p => (ONLINE ? (p.uid || p.name) : p.name);
+const statsKey = () => 'stats_' + (ONLINE ? 'duo' : 'solo');
+let STATS = {};
+function loadStats() { try { STATS = JSON.parse(lsGet(statsKey()) || '{}'); } catch (e) { STATS = {}; } STATS.wins = STATS.wins || {}; STATS.season = STATS.season || {}; STATS.names = STATS.names || {}; STATS.seasonNo = STATS.seasonNo || 1; return STATS; }
+function recordResult() {
+  if (!G || !G.result) return;
+  const s = loadStats();
+  if (s.lastGid === G.gid) return;
+  s.lastGid = G.gid;
+  G.players.forEach(p => { s.names[PID(p)] = p.name; });
+  const ff = G.result.ff;
+  const alive = ff != null ? G.players.filter((p, i) => i !== ff) : G.players;
+  const top = Math.max(...alive.map(p => p.score)), champs = alive.filter(p => p.score === top);
+  if (champs.length === 1) {
+    const id = PID(champs[0]);
+    s.wins[id] = (s.wins[id] || 0) + 1;
+    s.season[id] = (s.season[id] || 0) + 1;
+    if (s.streakId === id) s.streakN = (s.streakN || 0) + 1; else { s.streakId = id; s.streakN = 1; }
+    if (s.season[id] >= SEASON_TARGET) { s.crown = id; s.seasonNo = (s.seasonNo || 1) + 1; s.season = {}; G._newChamp = s.names[id]; }
+  } else { s.streakId = null; s.streakN = 0; }
+  lsSet(statsKey(), JSON.stringify(s)); STATS = s;
+}
+const crownId = () => STATS && STATS.crown;
+const streakOf = id => (STATS && STATS.streakId === id && STATS.streakN >= 2) ? STATS.streakN : 0;
+
+
 const withBonus = () => cfg.mode !== 'normal';
 const advOn = () => cfg.adv !== 'non';
 const undoOn = () => cfg.undo === 'oui';
 const isOn = k => !!(PW[k] && (PW[k].fixed ? undoOn() : (withBonus() && cfg.bonus.includes(k))));
-let cfg = { opp: 1, level: 'expert', mode: 'bonus', dist: 'tiles', btiles: 8, uses: 1, hints: 2, undo: 'non', adv: 'oui', bonus: POWERS.filter(x => !x.fixed).map(x => x.k) };
+function comboMult(p) { if (cfg.combo !== 'oui') return 1; const n = p.placeStreak || 0; return n >= 3 ? 2 : n >= 2 ? 1.5 : 1; }
+let cfg = { opp: 1, level: 'expert', mode: 'bonus', dist: 'tiles', btiles: 8, uses: 1, hints: 2, undo: 'non', adv: 'oui', combo: 'non', fx: 'oui', bonus: POWERS.filter(x => !x.fixed).map(x => x.k) };
 let G = null, sel = null, ghost = null, targetMap = new Map(), freshK = null, aiTimer = null;
 // ONLINE : partie en ligne ; ME : siège du joueur local (0 hors ligne)
 let ONLINE = false, ME = 0, SEATS = null;
@@ -454,7 +561,10 @@ function newRound() {
   const bks = (withBonus() && cfg.dist === 'tiles') ? POWERS.filter(x => !x.passive && !x.fixed && cfg.bonus.includes(x.k)).map(x => x.k) : [];
   if (bks.length) shuffle(G.pool.slice()).slice(0, cfg.btiles).forEach(t => { t.bk = bks[Math.random() * bks.length | 0]; });
   const n = G.players.length, deal = n === 2 ? 9 : 7;
-  G.players.forEach(p => { p.hand = sortHand(G.pool.splice(0, deal)); p.roundStart = p.score; });
+  G.players.forEach(p => { p.hand = sortHand(G.pool.splice(0, deal)); p.roundStart = p.score;
+    p.placeStreak = 0; p.shield = false; p.mBridge = false; p.mHex = false; p.mTriples = 0; p.mBomb = false; p.mDrew = false;
+    p.mission = null; });
+  G.lastUse = null; loadStats();
   G.freezeNext = false; G.drawFrozen = false; G.extra = false; G.afterBonus = null;
   sel = null; ghost = null; targetMap = new Map();
   let starter = G.nextStarter;
@@ -487,17 +597,23 @@ function placeMove(pi, ti, m) {
   const mult = p.doubleArmed ? 2 : 1;
   if (mult === 2) p.doubleArmed = false;
   if (m.jk >= 0) p.jokerArmed = false;
-  cell.tile = placedTile; cell.pts = m.pts * mult;
+  if (cfg.combo === 'oui') p.placeStreak = (G.draws === 0 ? (p.placeStreak || 0) : 0) + 1; else p.placeStreak = 0;
+  const cmb = comboMult(p), gain = Math.round(m.pts * mult * cmb);
+  cell.tile = placedTile; cell.pts = gain;
   G.board.set(k, cell);
-  p.score += m.pts * mult; G.lastK = k; freshK = k; G.passes = 0;
-  addLog(`${p.name} ${vous(p) ? 'posez' : 'pose'} ${m.vals.join('-')} : +${m.pts * mult}${m.label ? ' (' + m.label + ' +' + m.bonus + ')' : ''}${mult === 2 ? ' ✖2' : ''}${m.jk >= 0 ? ' 🃏' : ''}`);
+  p.score += gain; G.lastK = k; freshK = k; G.passes = 0;
+  if (m.label === 'Pont') p.mBridge = true; else if (/exagone/.test(m.label)) p.mHex = true;
+  if (m.vals[0] === m.vals[1] && m.vals[1] === m.vals[2]) p.mTriples = (p.mTriples || 0) + 1;
+  addLog(`${p.name} ${vous(p) ? 'posez' : 'pose'} ${m.vals.join('-')} : +${gain}${m.label ? ' (' + m.label + ' +' + m.bonus + ')' : ''}${mult === 2 ? ' ✖2' : ''}${cmb > 1 ? ' 🔥×' + cmb : ''}${m.jk >= 0 ? ' 🃏' : ''}`);
   sel = null; ghost = null; targetMap = new Map();
-  const popTxt = '+' + m.base * mult, popSub = [m.bonus ? m.label + ' +' + m.bonus * mult : '', mult === 2 ? '✖2 Double !' : ''].filter(Boolean).join(' · ');
+  const popTxt = '+' + gain, popSub = [m.bonus ? m.label + ' +' + Math.round(m.bonus * mult * cmb) : '', mult === 2 ? '✖2 Double !' : '', cmb > 1 ? '🔥 Combo ×' + cmb : ''].filter(Boolean).join(' · ');
+  sfx(/exagone/.test(m.label) ? 'hex' : m.label === 'Pont' ? 'bridge' : 'place'); buzz(m.bonus ? (/exagone/.test(m.label) ? [15, 35, 25] : 28) : 10); if (cmb > 1) sfx('combo');
+  if (p.ai && m.bonus && Math.random() < .45) setTimeout(() => showReaction(['😎', '🔥', '😏', '🙌'][Math.random() * 4 | 0], false), 550);
   if (ONLINE) { G.popId = (G.popId || 0) + 1; G.pop = { id: G.popId, c: m.c, r: m.r, txt: popTxt, sub: popSub }; seenPop = G.popId; }
   render();
   ensureVisible(m.c, m.r);
   pop(m.c, m.r, popTxt, popSub);
-  if (mult === 2 && !m.bonus) banner('✖2 Double ! +' + m.pts * 2);
+  if (mult === 2 && !m.bonus) banner('✖2 Double ! +' + gain);
   else if (m.bonus) banner((m.label === 'Pont' ? '🌉 ' : /exagone/.test(m.label) ? '⬡ ' : '⭐ ') + m.label + ' ! +' + m.bonus);
   if (p.hand.length === 0) { finishGame(pi); return; }
   // --- bonus : poser une tuile ✨ (ou compléter un hexagone) REMPLIT votre réserve ; vous activez le pouvoir quand vous voulez via les boutons ---
@@ -601,19 +717,33 @@ function bombCore(k) {
   G.undoSnap = null;
   const cell = G.board.get(k); if (!cell) return;
   const owner = G.players[cell.owner], me = G.players[G.current];
+  if (me.powers.bomb > 0) me.powers.bomb--;
+  me.mBomb = true;
+  if (cell.owner !== G.current && owner.shield) {
+    owner.shield = false;
+    pevent(G.current, 'use', 'shieldblock', { who: cell.owner, from: 'bomb' });
+    addLog(`🛡️ ${vous(owner) ? 'Votre bouclier annule la bombe' : owner.name + ' : le bouclier annule la bombe'}`);
+    sfx('shield'); buzz(40); if (G.current === ME || advOn()) banner('🛡️ Bouclier ! Bombe annulée'); render(); return;
+  }
   removeCell(k);
   owner.score -= cell.pts;
   const t = cell.tile; t.rot = 0; t.fav = false;
   G.pool.splice(Math.random() * (G.pool.length + 1) | 0, 0, t);
-  if (me.powers.bomb > 0) me.powers.bomb--;
   pevent(G.current, 'use', 'bomb', { t: t.join('-'), owner: cell.owner, pts: cell.pts, c: cell.c, r: cell.r });
   addLog(`💣 Boum ! ${t.join('-')} explose : ${vous(owner) ? 'vous perdez' : owner.name + ' perd'} ${cell.pts} pts`);
+  sfx('bomb'); buzz([30, 60, 40]);
   ensureVisible(cell.c, cell.r); boomFx(cell.c, cell.r, cell.pts, cell.owner === ME);
   if (G.current === ME || advOn()) banner('💣 Boum ! −' + cell.pts);
 }
 function startSteal(me, q) {
-  const picks = shuffle(q.hand.slice()).slice(0, 3);
   if (me.powers.steal > 0) me.powers.steal--;
+  if (q.shield) {
+    q.shield = false;
+    pevent(G.players.indexOf(me), 'use', 'shieldblock', { who: G.players.indexOf(q), from: 'steal' });
+    addLog(`🛡️ ${vous(q) ? 'Votre bouclier annule le vol' : q.name + ' : le bouclier annule le vol'}`);
+    sfx('shield'); banner('🛡️ Bouclier ! Vol annulé'); render(); maybeAfter(); return;
+  }
+  const picks = shuffle(q.hand.slice()).slice(0, 3);
   const take = t => {
     stealPick = null; G.mode = null;
     const i = q.hand.indexOf(t);
@@ -669,14 +799,14 @@ function drawTile() {
   const t = G.pool.pop();
   p.hand.push(t); // ajoutée en fin de main
   if (p.human) drawnT = t;
-  p.score -= 5; G.draws++; G.msg = '';
+  p.score -= 5; G.draws++; G.msg = ''; p.mDrew = true; p.placeStreak = 0;
   addLog(`${p.name} pioche une tuile (−5)`, p.human ? `Vous piochez <b>${t.join('-')}</b>${t.bk ? ' ✨ ' + PW[t.bk].ic : ''} (−5)` : null);
   sel = null; ghost = null; targetMap = new Map();
   return true;
 }
 function passTurn() {
   const p = cur();
-  G.undoSnap = null;
+  G.undoSnap = null; p.placeStreak = 0;
   if (G.extra) { addLog(`${p.name} ${vous(p) ? 'terminez' : 'termine'} son tour`); nextTurn(); return; }
   p.score -= 10; G.passes = G.pool.length === 0 ? G.passes + 1 : 0;
   addLog(`${p.name} ${vous(p) ? 'passez' : 'passe'} (−10)`);
@@ -689,6 +819,11 @@ function aiTurn() {
   if (G.undoSnap) { G.undoSnap = null; render(); }
   const p = cur(), ms = allMoves(p.hand);
   const nextP = G.players[(G.current + 1) % G.players.length];
+  if (!G.aiPowerUsed && p.powers.shield && !p.shield && Math.random() < .5) {
+    G.aiPowerUsed = true; p.powers.shield--; p.shield = true;
+    pevent(G.current, 'use', 'shield', {}); addLog(`🛡️ ${p.name} arme un bouclier`); banner(`🛡️ ${p.name} : bouclier`); render();
+    aiTimer = setTimeout(aiTurn, 800); return;
+  }
   // Gel de la pioche : l'IA le lance quand l'adversaire a peu de tuiles (il risque d'être bloqué)
   if (!G.aiPowerUsed && p.powers.freeze && !G.freezeNext && G.pool.length && nextP.hand.length <= 4 && Math.random() < .6) {
     G.aiPowerUsed = true; p.powers.freeze--; G.freezeNext = true; G.freezeBy = G.current;
@@ -745,6 +880,8 @@ function showEnd() {
   const gid = shownEnd = G.gid;
   EVQ.length = 0; if (evShown) nextEv(); // ferme une éventuelle carte de bonus encore affichée
   if (G.result.ff != null) return showEndModal();
+  recordResult(); sfx('win');
+  if (G._newChamp) { const sn = (STATS.seasonNo || 2) - 1; setTimeout(() => toast(`👑 ${G._newChamp} remporte la saison ${sn} !`), 700); G._newChamp = null; }
   const top = Math.max(...G.players.map(p => p.score)), champs = G.players.filter(p => p.score === top);
   fireworks(5000, champs.length > 1 ? '🤝 Égalité !' : champs[0] === meP() ? '🏆 Victoire !' : `🏆 ${champs[0].name} gagne !`, champs.length === 1 && champs[0] === meP());
   setTimeout(() => { if (G && G.gid === gid && G.over && G.result) showEndModal(); }, 5000);
@@ -807,11 +944,22 @@ function showEndModal() {
   const top = Math.max(...alive.map(p => p.score)), champs = alive.filter(p => p.score === top), champ = champs[0], tie = champs.length > 1;
   const rows = ps.map((p, i) => `<tr class="${alive.includes(p) && p.score === top ? 'win' : ''}"><td><span class="dot" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${p.color};margin-right:6px"></span>${isMe(p) && ONLINE ? p.name + ' (vous)' : p.name}</td><td class="n">${rem[i]}</td><td class="n">${p.score}</td></tr>`).join('');
   const ns = ps[G.nextStarter];
+  // tableau de rivalité : victoires de chacun + série
+  let rivHtml = '';
+  const S = STATS;
+  if (S && S.wins && Object.keys(S.wins).length) {
+    const ids = ps.map(PID).filter((v, i, a) => a.indexOf(v) === i);
+    const nm = id => (S.names[id] || id) + (ONLINE && id === PID(me) ? ' (vous)' : '');
+    const winsRows = ids.map(id => `<div class="rivRow"><span>${crownId() === id ? '👑 ' : ''}${nm(id)}</span><b>${S.wins[id] || 0} v.${S.season && S.season[id] ? ` · saison ${S.season[id]}/${SEASON_TARGET}` : ''}</b></div>`).join('');
+    const streak = S.streakId && S.streakN >= 2 ? `<div class="rivStreak">🔥 ${nm(S.streakId)} : ${S.streakN} victoires d’affilée</div>` : '';
+    rivHtml = `<div class="rivalry"><div class="rivTitle">⚔️ Rivalité${S.seasonNo > 1 ? ` · saison ${S.seasonNo}` : ''}</div>${winsRows}${streak}</div>`;
+  }
   showModal(`
     <h2>${tie ? '🤝 Égalité !' : isMe(champ) ? '🏆 Victoire !' : `🏆 ${champ.name} gagne`}${ff != null && !tie ? ' <small style="opacity:.7;font-size:15px">par abandon</small>' : ''}</h2>
     <p>${title}${/[!.]$/.test(title) ? '' : '.'}</p>
     <p>${detail}</p>
     <table class="res"><tr><th>Joueur</th><th style="text-align:right">En main</th><th style="text-align:right">Score</th></tr>${rows}</table>
+    ${rivHtml}
     <p style="opacity:.75;font-size:13.5px;margin-top:10px">Revanche : ${isMe(ns) ? 'vous commencerez' : ns.name + ' commencera'}.</p>
     <div class="mfoot" style="flex-wrap:wrap"><button class="btn ghostbtn" id="mHome">🏠 Quitter</button><button class="btn ghostbtn" id="mNew">Nouvelle partie</button><button class="btn primary" id="mRematch">🔁 Revanche</button></div>`);
   $('mNew').onclick = showSetup; $('mRematch').onclick = rematch; $('mHome').onclick = goHome;
@@ -943,12 +1091,14 @@ function powerAvailable(k) {
     case 'steal': return G.players.some(q => q !== me && q.hand.length > 1);
     case 'bomb': return [...G.board.keys()].some(canRemove);
     case 'rafale': return !me.rafaleArmed && !G.extra;
+    case 'shield': return !me.shield;
+    case 'mirror': return !!(G.lastUse && G.lastUse.by !== G.current && PW[G.lastUse.k]);
   }
   return false;
 }
 function powerActive(k) {
   const me = meP();
-  return G.mode === k || (k === 'double' && me.doubleArmed) || (k === 'joker' && me.jokerArmed) || (k === 'rafale' && me.rafaleArmed) || (k === 'spy' && G.spy === ME + 1) || (k === 'freeze' && G.freezeNext && humanTurn());
+  return G.mode === k || (k === 'double' && me.doubleArmed) || (k === 'joker' && me.jokerArmed) || (k === 'rafale' && me.rafaleArmed) || (k === 'shield' && me.shield) || (k === 'spy' && G.spy === ME + 1) || (k === 'freeze' && G.freezeNext && humanTurn());
 }
 function usePower(kind) {
   if (!powerAvailable(kind)) return;
@@ -964,6 +1114,11 @@ function usePower(kind) {
   if (kind === 'freeze') { G.freezeNext = true; G.freezeBy = G.current; const n = G.players[(G.current + 1) % G.players.length]; addLog(`🔒 ${n.name} ne pourra pas piocher au prochain tour`); banner(`🔒 Pioche de ${n.name} gelée !`); }
   if (kind === 'joker') { me.jokerArmed = true; addLog(vous(me) ? '🃏 Joker activé : un coin de votre prochaine tuile vaut n’importe quel nombre' : `🃏 ${me.name} active un Joker`); banner('🃏 Joker activé !'); }
   if (kind === 'rafale') { me.rafaleArmed = true; addLog(vous(me) ? '⚡ Rafale activée : vous poserez deux tuiles ce tour' : `⚡ ${me.name} active Rafale : deux tuiles ce tour`); banner('⚡ Rafale activée !'); }
+  if (kind === 'shield') { me.shield = true; addLog(vous(me) ? '🛡️ Bouclier armé : la prochaine bombe ou vol contre vous sera annulé' : `🛡️ ${me.name} arme un bouclier`); banner('🛡️ Bouclier armé !'); sfx('shield'); }
+  if (kind === 'mirror') {
+    const lu = G.lastUse, copy = (lu && lu.by !== G.current && PW[lu.k]) ? lu.k : null;
+    if (copy) { me.powers[copy] = (me.powers[copy] || 0) + 1; addLog(vous(me) ? `🪞 Miroir : vous copiez ${PW[copy].ic} ${PW[copy].l}` : `🪞 ${me.name} copie ${PW[copy].ic} ${PW[copy].l}`); banner(`🪞 Copié : ${PW[copy].ic} ${PW[copy].l} !`); sfx('gain'); }
+  }
   render();
 }
 const WHEN = {
@@ -977,7 +1132,9 @@ const WHEN = {
   steal: 'Pendant votre tour, avant de poser. Une fois les 3 tuiles révélées, vous devez en prendre une.',
   bomb: 'Pendant votre tour, avant de poser. Seules les tuiles en bordure peuvent sauter.',
   rafale: 'Avant de poser. Après votre 1ʳᵉ tuile, vous en posez une 2ᵉ (ou terminez).',
-  chest: 'Automatique dès que vous complétez un hexagone.'
+  chest: 'Automatique dès que vous complétez un hexagone.',
+  shield: 'À tout moment pendant votre tour. Reste armé jusqu’à ce qu’une bombe ou un vol vous vise.',
+  mirror: 'Pendant votre tour, après qu’un adversaire a utilisé un bonus : vous en gagnez une copie.'
 };
 function whyNot(k) {
   const me = meP();
@@ -989,6 +1146,8 @@ function whyNot(k) {
   if (k === 'swap') return 'Pioche vide';
   if (k === 'bomb') return 'Aucune tuile en bordure';
   if (k === 'steal') return 'Aucun adversaire avec assez de tuiles';
+  if (k === 'shield') return 'Bouclier déjà armé';
+  if (k === 'mirror') return 'Aucun bonus adverse à copier pour l’instant';
   return 'Déjà actif';
 }
 function showBonus() {
@@ -1136,7 +1295,8 @@ function renderPlayers() {
   $('opps').innerHTML = G.players.filter((p, i) => i !== ME).map(p => {
     const i = G.players.indexOf(p), active = i === G.current && !G.over;
     const n = p.hand.length, many = G.players.length > 2, shown = many ? 0 : Math.min(n, 12);
-    const badges = `${p.doubleArmed ? '<span class="badge2">✖2</span>' : ''}${(G.freezeNext && nxt === p) || (G.drawFrozen && cur() === p) ? '<span class="badge2">🔒</span>' : ''}`;
+    const _id = PID(p), _st = streakOf(_id);
+    const badges = `${crownId() === _id ? '<span class="crown" title="Champion de la saison">👑</span>' : ''}${_st ? `<span class="flame" title="${_st} victoires d’affilée">🔥${_st}</span>` : ''}${p.shield ? '<span class="badge2" title="Bouclier armé">🛡️</span>' : ''}${p.doubleArmed ? '<span class="badge2">✖2</span>' : ''}${(G.freezeNext && nxt === p) || (G.drawFrozen && cur() === p) ? '<span class="badge2">🔒</span>' : ''}`;
     const online = ONLINE ? (PRESENCE[p.uid] ? '<span class="onl" title="En ligne"></span>' : '<span class="onl off" title="Hors ligne"></span>') : '';
     return `<div class="opp ${active ? 'active' : ''}"><div class="av" style="background:${p.color}">${p.name[0]}${online}</div>
       <div class="oinfo"><span class="oname">${p.name}${badges}${active ? ' <span class="think">…</span>' : ''}</span><span class="oscore">${p.score}</span></div>
@@ -1144,7 +1304,8 @@ function renderPlayers() {
   }).join('');
   const me = meP();
   $('meScore').textContent = me.score;
-  $('meName').innerHTML = `${ONLINE ? me.name : 'Vous'}${me.doubleArmed ? ' ✖2' : ''}${me.jokerArmed ? ' 🃏' : ''}${me.rafaleArmed ? ' ⚡' : ''}${(G.freezeNext && nxt === me) || (G.drawFrozen && cur() === me) ? ' 🔒' : ''}`;
+  const _mid = PID(me), _mst = streakOf(_mid);
+  $('meName').innerHTML = `${ONLINE ? me.name : 'Vous'}${crownId() === _mid ? ' <span class="crown">👑</span>' : ''}${_mst ? ` <span class="flame">🔥${_mst}</span>` : ''}${me.shield ? ' 🛡️' : ''}${me.doubleArmed ? ' ✖2' : ''}${me.jokerArmed ? ' 🃏' : ''}${me.rafaleArmed ? ' ⚡' : ''}${(G.freezeNext && nxt === me) || (G.drawFrozen && cur() === me) ? ' 🔒' : ''}`;
   $('me').classList.toggle('active', humanTurn());
 }
 function renderHand() {
@@ -1238,6 +1399,7 @@ function pevent(seat, kind, k, d) {
   G.pev = (G.pev || []).concat(e).slice(-10); seenPev = G.pevId;
   if (seat !== ME) { if (advOn() || e.kind === 'use') announce(e); } // adversaire : un USAGE est toujours montré ; un GAIN seulement si l'option est activée
   else if (kind === 'spy' || kind === 'gain') announce(e); // votre espion, ou un bonus que vous venez de gagner
+  if (kind === 'use' && PW[k] && !PW[k].fixed && k !== 'shield' && k !== 'mirror') G.lastUse = { by: seat, k };
 }
 function evText(e) {
   if (e.kind === 'recap') return { ic: '📋', ti: e.d.title, tx: e.d.lines.map(l => `<div style="margin:3px 0">${l}</div>`).join('') };
@@ -1258,7 +1420,9 @@ function evText(e) {
       joker: `un coin de la tuile suivante de ${n} pourra valoir n’importe quel nombre.`,
       steal: `${n} pourra vous prendre une tuile, choisie parmi 3 tirées au hasard dans votre main.`,
       bomb: `${n} pourra faire exploser une tuile en bordure du plateau ; celui qui l’a posée perdra ses points.`,
-      rafale: `${n} pourra poser <b>deux tuiles</b> dans le même tour.`
+      rafale: `${n} pourra poser <b>deux tuiles</b> dans le même tour.`,
+      shield: `${n} pourra <b>annuler</b> votre prochaine Bombe ou votre prochain Vol.`,
+      mirror: `${n} pourra <b>copier</b> le dernier bonus que vous aurez utilisé.`
     }[e.k] || w.tip;
     return { ic: w.ic,
       ti: d.via === 'chest' ? `${n} ouvre le coffre surprise` : `${n} a posé une tuile bonus`,
@@ -1275,6 +1439,9 @@ function evText(e) {
     case 'bomb': return { ic: '💣', ti: `${n} fait exploser une tuile`, tx: `La tuile <b>${d.t}</b> est retirée du plateau et retourne dans la pioche : ${d.owner === ME ? 'vous perdez' : nm(d.owner) + ' perd'} <b>${d.pts} points</b>.` };
     case 'rafale': return { ic: '⚡', ti: `${n} active Rafale`, tx: `${n} va poser <b>deux tuiles</b> pendant ce tour.` };
     case 'undo': return { ic: '🔁', ti: `${n} reprend sa tuile`, tx: `${n} retire la tuile <b>${d.t}</b> qu’il venait de poser (−${d.pts} pts) et rejoue son tour.` };
+    case 'shield': return { ic: '🛡️', ti: `${n} arme un bouclier`, tx: `La prochaine Bombe ou le prochain Vol dirigé contre ${n} sera <b>annulé</b> automatiquement.` };
+    case 'mirror': return { ic: '🪞', ti: `${n} copie un bonus`, tx: `${n} récupère une copie du dernier bonus utilisé et le garde en réserve.` };
+    case 'shieldblock': return { ic: '🛡️', ti: `Bouclier de ${nm(d.who)} !`, tx: `Le bouclier de ${nm(d.who)} <b>annule</b> ${d.from === 'bomb' ? 'la bombe' : 'le vol'} de ${n}.` };
   }
   return { ic: w.ic, ti: `${n} utilise ${w.l}`, tx: w.tip + '.' };
 }
@@ -1302,6 +1469,21 @@ function nextEv() {
   evTimer = setTimeout(nextEv, dur);
 }
 $('evCard').addEventListener('click', nextEv);
+let seenReact = 0;
+const REACTS = ['😂', '😮', '😎', '🔥', '😤', '🙌', '🤡', '😭'];
+function showReaction(emoji, mine) {
+  const wrap = document.getElementById('boardWrap') || document.body;
+  const el = document.createElement('div'); el.className = 'reactFloat ' + (mine ? 'mine' : 'opp'); el.textContent = emoji;
+  el.style.left = (mine ? 62 : 18) + '%'; wrap.appendChild(el); sfx('react');
+  setTimeout(() => el.remove(), 1700);
+}
+function sendReaction(emoji) {
+  showReaction(emoji, true);
+  const rr = document.getElementById('reactRow'); if (rr) rr.hidden = true;
+  if (ONLINE && G) { G.reactId = (G.reactId || 0) + 1; G.react = { id: G.reactId, seat: ME, emoji }; seenReact = G.reactId; sync(); }
+}
+let reactTimer = null;
+function toggleReacts() { const rr = document.getElementById('reactRow'); if (!rr) return; rr.hidden = !rr.hidden; clearTimeout(reactTimer); if (!rr.hidden) reactTimer = setTimeout(() => { rr.hidden = true; }, 4500); }
 function toast(t) {
   const box = $('toasts'), d = document.createElement('div');
   d.innerHTML = t; box.appendChild(d);
@@ -1413,6 +1595,9 @@ svg.addEventListener('wheel', e => { e.preventDefault(); const p = rel(e); zoomA
 $('fitBtn').onclick = () => fitView(true);
 $('menuBtn').onclick = showMenu;
 $('pwBtns').addEventListener('click', e => { const b = e.target.closest('[data-p]'); if (b) showPower(b.dataset.p); });
+$('reactRow').innerHTML = REACTS.map(e => `<button data-r="${e}" aria-label="Réagir ${e}">${e}</button>`).join('');
+$('reactBtn').onclick = toggleReacts;
+$('reactRow').addEventListener('click', e => { const b = e.target.closest('[data-r]'); if (b) sendReaction(b.dataset.r); });
 // fiche d'un bonus : ce qu'il fait, quand l'utiliser, puis « Utiliser » ou « Annuler »
 function showPower(k) {
   if (!G) return;
@@ -1568,6 +1753,9 @@ function showSetup() {
     <h3>Coups de bonus de l’adversaire</h3>${seg('adv', [['oui', 'Afficher'], ['non', 'Cacher']])}` : `<p style="font-size:12.5px;opacity:.7;margin:2px 0 0">Partie classique, sans bonus.</p>`}
     <h3>Indices par partie</h3>${seg('hints', [[0, 'Aucun'], [2, '2'], [5, '5']])}
     <h3>🔁 Reprise</h3>${seg('undo', [['non', 'Non'], ['oui', 'Oui, sur tous vos coups']])}
+    <h3>🔥 Combos</h3>${seg('combo', [['non', 'Non'], ['oui', 'Oui']])}
+    <p style="font-size:12.5px;opacity:.7;margin:4px 0 0">Poser plusieurs tuiles d’affilée sans piocher fait monter un multiplicateur (×1,5 puis ×2).</p>
+    <h3>🔊 Sons & vibrations</h3>${seg('fx', [['oui', 'Activés'], ['non', 'Coupés']])}
     <div class="mfoot">${onl && G ? '<button class="btn ghostbtn" id="mBackGame">Retour</button>' : ''}<button class="btn ghostbtn" id="mRules">Règles</button><button class="btn primary" id="mGo">${onl ? (friend ? 'Lancer la partie' : 'Créer la partie') : 'Jouer'}</button></div>`);
   const multi = document.querySelector('.opts.multi');
   const syncB = () => { if (multi) cfg.bonus = [...multi.querySelectorAll('.opt.on')].map(x => x.dataset.v); };
@@ -1672,10 +1860,11 @@ function ser() {
   return JSON.stringify({
     gid: G.gid, cfg: G.cfg, round: G.round, current: G.current, draws: G.draws, passes: G.passes, over: !!G.over, result: G.result || null,
     freezeNext: !!G.freezeNext, freezeBy: G.freezeBy ?? null, drawFrozen: !!G.drawFrozen, extra: !!G.extra, lastK: G.lastK || null, starter: G.starter, nextStarter: G.nextStarter,
-    pev: G.pev || [], pevId: G.pevId || 0,
+    pev: G.pev || [], pevId: G.pevId || 0, react: G.react || null, reactId: G.reactId || 0, lastUse: G.lastUse || null,
     spy: G.spy || 0, chest: !!G.chest, logId: G.logId || 0, log: G.log.slice(-20), bn: G.bn || null, bnId: G.bnId || 0, pop: G.pop || null, popId: G.popId || 0,
     players: G.players.map(p => ({ name: p.name, uid: p.uid, color: p.color, score: p.score, hand: p.hand.map(T), powers: p.powers, hints: p.hints,
-      doubleArmed: !!p.doubleArmed, jokerArmed: !!p.jokerArmed, rafaleArmed: !!p.rafaleArmed })),
+      doubleArmed: !!p.doubleArmed, jokerArmed: !!p.jokerArmed, rafaleArmed: !!p.rafaleArmed, shield: !!p.shield, placeStreak: p.placeStreak || 0,
+      mission: p.mission || null, mBridge: !!p.mBridge, mHex: !!p.mHex, mTriples: p.mTriples || 0, mBomb: !!p.mBomb, mDrew: !!p.mDrew })),
     board: [...G.board.values()].map(c => ({ c: c.c, r: c.r, vals: c.vals, owner: c.owner, jk: c.jk, pts: c.pts, tile: T(c.tile) })),
     pool: G.pool.map(T),
     undo: u ? { seat: u.seat, k: u.k, pts: u.pts, tile: T(u.tile), mult: u.mult, jk: u.jk, chest: u.chest || null, bk: u.bk || null,
@@ -1729,7 +1918,7 @@ function applyRemote(val) {
   if (fresh || firstLoad) {
     if (fresh) shownEnd = null;
     hideModal(); view = { x: 0, y: 0, k: 1 }; fitView(false);
-    seenLog = G.logId || 0; seenBn = G.bn ? G.bn.id : 0; seenPop = G.pop ? G.pop.id : 0; seenPev = G.pevId || 0;
+    seenLog = G.logId || 0; seenBn = G.bn ? G.bn.id : 0; seenPop = G.pop ? G.pop.id : 0; seenPev = G.pevId || 0; seenReact = G.react ? G.react.id : 0;
     firstLoad = false;
     render();
   } else {
@@ -1740,6 +1929,7 @@ function applyRemote(val) {
     if (newPop) { ensureVisible(newPop.c, newPop.r); pop(newPop.c, newPop.r, newPop.txt, newPop.sub); }
     if (G.bn && G.bn.id > seenBn) { seenBn = G.bn.id; bannerShow(G.bn.t); }
     (G.pev || []).filter(e => e.id > seenPev && e.seat !== ME).forEach(e => { if (e.k === 'bomb' && e.kind === 'use' && e.d.c != null) { ensureVisible(e.d.c, e.d.r); boomFx(e.d.c, e.d.r, e.d.pts, e.d.owner === ME); } if (advOn() || e.kind === 'use') announce(e); }); seenPev = G.pevId || 0;
+    if (G.react && G.react.id > seenReact) { seenReact = G.react.id; if (G.react.seat !== ME) showReaction(G.react.emoji, false); }
   }
   if (G.over && G.result && shownEnd !== G.gid) setTimeout(showEnd, fresh ? 0 : 900);
   if (!wasMyTurn && humanTurn()) notifyTurn();
